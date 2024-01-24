@@ -360,7 +360,7 @@ def main():
         tokenized_inputs["bbox"] = bboxes
         tokenized_inputs["entities"] = entities
         tokenized_inputs["relations"] = examples["relations"]
-        # dummy labels because huggingface trainer needs them
+        # dummy labels because the trainer needs them
         tokenized_inputs["labels"] = [10000] * batch_size
         if data_args.visual_embed:
             tokenized_inputs["images"] = images
@@ -433,8 +433,6 @@ def main():
         for pred_relations, relations in zip(batched_pred_relations, batched_relations):
             pred_relations = set([(r["head_id"], r["tail_id"]) for r in pred_relations])
             relations = set([(r["head_id"], r["tail_id"]) for r in relations])
-            if len(relations) == 0:
-                relations = set()
             tp += len(pred_relations & relations)
             fp += len(pred_relations - relations)
             fn += len(relations - pred_relations)

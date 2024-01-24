@@ -96,9 +96,10 @@ class Funsd(datasets.GeneratorBasedBuilder):
 
     def _generate_examples(self, filepath, img_dir):
         logger.info("⏳ Generating examples from = %s", filepath)
-        ann_dir = file_path
-        img_dir = os.path.join(img_dir, "images")
-        for guid, file in enumerate(sorted(os.listdir(ann_dir))):
+        ann_dir = filepath
+        split = "training" if "train" in filepath else "testing"
+        img_dir = os.path.join(img_dir, split+"_data")
+        for file in sorted(os.listdir(ann_dir)):
             tokens = []
             bboxes = []
             ner_tags = []
@@ -106,26 +107,25 @@ class Funsd(datasets.GeneratorBasedBuilder):
             file_path = os.path.join(ann_dir, file)
             with open(file_path, "r", encoding="utf8") as f:
                 data = json.load(f)
-            image_path = os.path.join(img_dir, file)
-            image_path = image_path.replace("json", "png")
+            image_path = os.path.join(img_dir, data["img"]["fname"])
             image, size = load_image(image_path)
 
-            max_word_id = data["doc"][-1]["words"][-1]["id"]
+            max_word_id = data["document"][-1]["words"][-1]["id"]
             word_id_to_entity_label = [-1] * (max_word_id + 1)
-            for entity in data["entities"]:
+            for entity in data["label_entities"]:
                 entity_label = entity["label"].upper()
                 for word_id in entity["word_idx"]:
-                    word_id_to_entity_label[word_id] = entity_label
+                    word_id_to_entity_label[word_id] = entity_label + '-' + str(entity["entity_id"])
             for word_id in range(len(word_id_to_entity_label)):
                 if word_id_to_entity_label[word_id] == -1:
                     word_id_to_entity_label[word_id] = "O"
             assert np.array(word_id_to_entity_label == -1).sum() == 0
 
             tokens_word_id = []
-            for item in data["doc"]:
+            for item in data["document"]:
                 cur_line_bboxes = []
                 words = item["words"]
-                words = [w for w in words if w["text"].strip() != "" or w["text"] == "<unk>"]
+                words = [w for w in words if w["text"].strip() != "" and w["text"] != "<unk>"]
                 if len(words) == 0:
                     continue
                 for w in words:
@@ -142,9 +142,15 @@ class Funsd(datasets.GeneratorBasedBuilder):
                     ner_tags.append("O")
                 else:
                     if word_id == 0 or word_id_to_entity_label[word_id - 1] != word_id_to_entity_label[word_id]:
-                        ner_tags.append("B-" + word_id_to_entity_label[word_id])
+                        ner_tag = "B-" + word_id_to_entity_label[word_id]
+                        ner_tag = ner_tag[:ner_tag.rfind('-')]
+                        ner_tags.append(ner_tag)
                     else:
-                        ner_tags.append("I-" + word_id_to_entity_label[word_id])
+                        ner_tag = "I-" + word_id_to_entity_label[word_id]
+                        ner_tag = ner_tag[:ner_tag.rfind('-')]
+                        ner_tags.append(ner_tag)
             
-            yield guid, {"id": str(guid), "tokens": tokens, "bboxes": bboxes, "ner_tags": ner_tags,
+            
+            uid = data["uid"]
+            yield uid, {"id": uid, "tokens": tokens, "bboxes": bboxes, "ner_tags": ner_tags,
                          "image": image, "image_path": image_path}

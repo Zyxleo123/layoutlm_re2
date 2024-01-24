@@ -206,12 +206,11 @@ def main():
     set_seed(training_args.seed)
 
     if data_args.dataset_name == 'funsd':
-        # datasets = load_dataset("nielsr/funsd")
         import layoutlmft.data.funsd_ner
         datasets = load_dataset(os.path.abspath(layoutlmft.data.funsd_ner.__file__), cache_dir=model_args.cache_dir)
-    elif data_args.dataset_name == 'cord':
-        import layoutlmft.data.cord
-        datasets = load_dataset(os.path.abspath(layoutlmft.data.cord.__file__), cache_dir=model_args.cache_dir)
+    elif data_args.dataset_name == 'custom':
+        import layoutlmft.data.custom_ner
+        datasets = load_dataset(os.path.abspath(layoutlmft.data.custom_ner.__file__), cache_dir=model_args.cache_dir)
     else:
         raise NotImplementedError()
 
@@ -415,7 +414,7 @@ def main():
         tokenizer,
         pad_to_multiple_of=8 if training_args.fp16 else None,
         padding=padding,
-        max_length=512,
+        max_length=1024,
     )
 
     # Metrics
