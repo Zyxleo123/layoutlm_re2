@@ -125,7 +125,7 @@ class Funsd(datasets.GeneratorBasedBuilder):
             for item in data["document"]:
                 cur_line_bboxes = []
                 words = item["words"]
-                words = [w for w in words if w["text"].strip() != "" and w["text"] != "<unk>"]
+                words = [w for w in words if w["text"].strip() != ""]
                 if len(words) == 0:
                     continue
                 for w in words:

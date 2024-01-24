@@ -9,4 +9,5 @@
 !/*.sh
 !/*.py
 !/*.ipynb
+!/*.md
 __pycache__
