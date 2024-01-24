@@ -29,7 +29,7 @@
 
     解释：`entities`中的`start`和`end`是对应的`tokens`中的位置，界定实体的左闭右开区间端点，`label`是对应的实体类别，有0123四个值。`relations`中的`head`和`tail`是对应的`entities`中的位置。
 
-    生成策略：只是详实地把原始数据的标注信息转换成了上述格式，没有做额外的处理，除了将`word["text"].strip()`后为空的词语从`tokens`中删除，如果一个entity都是空词，就略过这个entity(没有去除"<unk>"，实测ner上区别不大)。这使得`start`，`end`和`tokens`中的位置一一对应，而不一定和原始文档的标注word_id对应。
+    生成策略：只是详实地把原始数据的标注信息转换成了上述格式，没有做额外的处理，除了将`word["text"].strip()`后为空的词语从`tokens`中删除，如果一个entity都是空词，就略过这个entity(没有去除"\<unk\>"，实测ner上区别不大)。这使得`start`，`end`和`tokens`中的位置一一对应，而不一定和原始文档的标注word_id对应。
 
 2. `examples/run_re.py:tokenize_and_align_start_end`(Dataset.map函数的函数参数；tokenization，以及将原来的`start`, `end`和tokenize之后的`input_ids`对齐)
 
@@ -77,8 +77,6 @@
     "tokens": ["..."],
     "bboxes": [[...]],
     "ner_tags": ["O", "B-<tag1>", "I-<tag1>", "B-<tag2>", "I-<tag2>", ...],
-        )
-    ),
     "image": [[[...]]],
     "image_path": "..."
     ```
