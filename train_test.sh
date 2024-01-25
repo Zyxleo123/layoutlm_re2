@@ -3,7 +3,7 @@
 # 目前只支持单卡
 
 export CUDA_DEVICE_ORDER=PCI_BUS_ID
-export CUDA_VISIBLE_DEVICES=6
+export CUDA_VISIBLE_DEVICES=3
 export TOKENIZERS_PARALLELISM=false
 export PYTHONPATH="/root/layout:$PYTHONPATH"
 
@@ -20,13 +20,17 @@ python examples/run_re.py \
   --per_device_eval_batch_size 1 \
   --dataloader_num_workers 8 \
   \
-  --output_dir ./results/layoutlmv3-base-finetuned-funsd-re-new \
+  --output_dir ./results/test \
   --overwrite_output_dir yes \
   \
-  --num_train_epochs 400 \
+  --num_train_epochs 2 \
   --evaluation_strategy steps \
-  --eval_steps 1000 \
-  --save_steps -1 \
+  --eval_steps 1 \
+  --save_steps 1 \
+  --load_best_model_at_end yes \
   \
-  --logging_steps 1000 \
-  --logging_dir ./logs-custom-re/seed-default \
+  --logging_steps 1 \
+  --logging_dir ./logs-new/test \
+  \
+  --max_train_samples 2 \
+  --max_val_samples 1 \

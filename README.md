@@ -91,3 +91,12 @@
 
     去除label=-100的prediction和label后，调用`classification_report`输出。
     
+# 3 Random test results
+
+seed is fed to `random`, `numpy`, `torch`, `torch.cuda`
+
+| seed/task&dataset | funsd_re | custom_re | funsd_ner | custom_ner |
+| :---: | :---: | :---: | :---: | :---: |
+| 21 | 0.6972 | 0.6798 | 0.0 | 0.8246 |
+| 28 | 0.6839 | 0.6673 | 0.0 | 0.8196 |
+| default | 0.0 | 0.0 | 0.0 | 0.0 |

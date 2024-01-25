@@ -12,16 +12,19 @@ python examples/run_ner.py \
   --do_train \
   --do_eval \
   --model_name_or_path ./layoutlmv3-base-1028 \
-  --output_dir ./results/layoutlmv3-base-finetuned-funsd-ner \
-  --overwrite_output_dir yes \
   --segment_level_layout 1 \
   --visual_embed 1 \
   --input_size 224 \
+  --per_device_train_batch_size 1 \
+  --gradient_accumulation_steps 16 \
+  --dataloader_num_workers 8 \
+  \
+  --output_dir ./results/layoutlmv3-base-finetuned-funsd-ner \
+  --overwrite_output_dir yes \
+  \
   --max_steps 1000 \
   --save_steps -1 \
   --evaluation_strategy steps \
   --eval_steps 100 \
-  --learning_rate 1e-5 \
-  --per_device_train_batch_size 1 \
-  --gradient_accumulation_steps 16 \
-  --dataloader_num_workers 8
+  --learning_rate 7e-5 \
+  \
