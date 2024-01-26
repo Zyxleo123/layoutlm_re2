@@ -253,6 +253,8 @@ class LayoutLMv3SelfAttention(nn.Module):
         self.has_relative_attention_bias = config.has_relative_attention_bias
         self.has_spatial_attention_bias = config.has_spatial_attention_bias
 
+        self.lam = nn.Parameter(torch.tensor(config.lam, dtype=torch.float32))
+
     def transpose_for_scores(self, x):
         new_x_shape = x.size()[:-1] + (self.num_attention_heads, self.attention_head_size)
         x = x.view(*new_x_shape)
@@ -278,6 +280,7 @@ class LayoutLMv3SelfAttention(nn.Module):
         hidden_states,
         attention_mask=None,
         head_mask=None,
+        ro_attn=None,
         encoder_hidden_states=None,
         encoder_attention_mask=None,
         past_key_value=None,
@@ -316,6 +319,11 @@ class LayoutLMv3SelfAttention(nn.Module):
         # The attention scores QT K/√d could be significantly larger than input elements, and result in overflow.
         # Changing the computational order into QT(K/√d) alleviates the problem. (https://arxiv.org/pdf/2105.13290.pdf)
         attention_scores = torch.matmul(query_layer / math.sqrt(self.attention_head_size), key_layer.transpose(-1, -2))
+
+        if ro_attn is not None:
+            attention_scores += self.lam * torch.unsqueeze(ro_attn, 1) / math.sqrt(self.attention_head_size)
+        else:
+            pass
 
         if self.has_relative_attention_bias and self.has_spatial_attention_bias:
             attention_scores += (rel_pos + rel_2d_pos) / math.sqrt(self.attention_head_size)
@@ -386,6 +394,7 @@ class LayoutLMv3Attention(nn.Module):
         hidden_states,
         attention_mask=None,
         head_mask=None,
+        ro_attn=None,
         encoder_hidden_states=None,
         encoder_attention_mask=None,
         past_key_value=None,
@@ -397,6 +406,7 @@ class LayoutLMv3Attention(nn.Module):
             hidden_states,
             attention_mask,
             head_mask,
+            ro_attn,
             encoder_hidden_states,
             encoder_attention_mask,
             past_key_value,
@@ -425,6 +435,7 @@ class LayoutLMv3Layer(nn.Module):
         hidden_states,
         attention_mask=None,
         head_mask=None,
+        ro_attn=None,
         encoder_hidden_states=None,
         encoder_attention_mask=None,
         past_key_value=None,
@@ -438,6 +449,7 @@ class LayoutLMv3Layer(nn.Module):
             hidden_states,
             attention_mask,
             head_mask,
+            ro_attn,
             output_attentions=output_attentions,
             past_key_value=self_attn_past_key_value,
             rel_pos=rel_pos,
@@ -584,6 +596,7 @@ class LayoutLMv3Encoder(nn.Module):
         bbox=None,
         attention_mask=None,
         head_mask=None,
+        ro_attn=None,
         encoder_hidden_states=None,
         encoder_attention_mask=None,
         past_key_values=None,
@@ -610,6 +623,9 @@ class LayoutLMv3Encoder(nn.Module):
             j = 0
 
         for i, layer_module in enumerate(self.layer):
+            if i > self.config.ro_layers:
+                ro_attn = None
+
             if output_hidden_states:
                 all_hidden_states = all_hidden_states + (hidden_states,)
 
@@ -637,6 +653,7 @@ class LayoutLMv3Encoder(nn.Module):
                     create_custom_forward(layer_module),
                     hidden_states,
                     attention_mask,
+                    ro_attn,
                     layer_head_mask,
                     encoder_hidden_states,
                     encoder_attention_mask,
@@ -649,6 +666,7 @@ class LayoutLMv3Encoder(nn.Module):
                 layer_outputs = layer_module(
                     hidden_states,
                     attention_mask,
+                    ro_attn,
                     layer_head_mask,
                     encoder_hidden_states,
                     encoder_attention_mask,
@@ -811,6 +829,7 @@ class LayoutLMv3Model(LayoutLMv3PreTrainedModel):
         valid_span=None,
         position_ids=None,
         head_mask=None,
+        ro_attn=None,
         inputs_embeds=None,
         encoder_hidden_states=None,
         encoder_attention_mask=None,
@@ -954,6 +973,7 @@ class LayoutLMv3Model(LayoutLMv3PreTrainedModel):
             position_ids=final_position_ids,
             attention_mask=extended_attention_mask,
             head_mask=head_mask,
+            ro_attn=ro_attn,
             encoder_hidden_states=encoder_hidden_states,
             encoder_attention_mask=encoder_extended_attention_mask,
             past_key_values=past_key_values,
@@ -1033,6 +1053,7 @@ class LayoutLMv3ForRelationExtraction(LayoutLMv3PreTrainedModel):
         token_type_ids=None,
         position_ids=None,
         head_mask=None,
+        ro_attn=None,
         entities=None,
         relations=None,
     ):
@@ -1044,6 +1065,7 @@ class LayoutLMv3ForRelationExtraction(LayoutLMv3PreTrainedModel):
             token_type_ids=token_type_ids,
             position_ids=position_ids,
             head_mask=head_mask,
+            ro_attn=ro_attn,
         )
 
         seq_length = input_ids.size(1)
@@ -1057,115 +1079,6 @@ class LayoutLMv3ForRelationExtraction(LayoutLMv3PreTrainedModel):
             relations=relations,
             pred_relations=pred_relations,
         )
-
-
-# class LayoutLMv3ForRelationExtraction(LayoutLMv3PreTrainedModel):
-#     _keys_to_ignore_on_load_unexpected = [r"pooler"]
-#     _keys_to_ignore_on_load_missing = [r"position_ids"]
-
-#     def __init__(self, config):
-#         super().__init__(config)
-#         self.layoutlmv3 = LayoutLMv3Model(config)
-#         self.dropout = nn.Dropout(config.hidden_dropout_prob)
-#         self.classifier = nn.Linear(config.hidden_size*2, 2)
-#         self.init_weights()
-#         self.add_logger()
-
-#     def add_logger(self):
-#         import logging, datetime
-#         self.pos_logger = logging.getLogger("LayoutLMv3ForRelationExtraction_pos")
-#         self.neg_logger = logging.getLogger("LayoutLMv3ForRelationExtraction_neg")
-#         self.pos_logger.setLevel(logging.INFO)
-#         self.neg_logger.setLevel(logging.INFO)
-#         formatter = logging.Formatter('%(asctime)s - %(message)s', datefmt='%d %H:%M:%S')
-#         time = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-#         pos_file_handler = logging.FileHandler(f"logs/pos_{time}.log")
-#         neg_file_handler = logging.FileHandler(f"logs/neg_{time}.log")
-#         pos_file_handler.setFormatter(formatter)
-#         neg_file_handler.setFormatter(formatter)
-#         self.pos_logger.addHandler(pos_file_handler)
-#         self.neg_logger.addHandler(neg_file_handler)
-
-#     def forward(
-#         self,
-#         input_ids=None,
-#         bbox=None,
-#         attention_mask=None,
-#         entity1_mask=None,
-#         entity2_mask=None,
-#         token_type_ids=None,
-#         position_ids=None,
-#         valid_span=None,
-#         head_mask=None,
-#         inputs_embeds=None,
-#         labels=None,
-#         output_attentions=None,
-#         output_hidden_states=None,
-#         return_dict=None,
-#         images=None,
-#     ):
-#         r"""
-#         labels (:obj:`torch.LongTensor` of shape :obj:`(batch_size, sequence_length)`, `optional`):
-#             Labels for computing the token classification loss. Indices should be in ``[0, ..., config.num_labels -
-#             1]``.
-#         """
-#         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
-
-#         outputs = self.layoutlmv3(
-#             input_ids,
-#             bbox=bbox,
-#             attention_mask=attention_mask,
-#             token_type_ids=token_type_ids,
-#             position_ids=position_ids,
-#             head_mask=head_mask,
-#             inputs_embeds=inputs_embeds,
-#             output_attentions=output_attentions,
-#             output_hidden_states=output_hidden_states,
-#             return_dict=return_dict,
-#             images=images,
-#             valid_span=valid_span,
-#         )
-
-#         sequence_output = outputs[0]
-#         # compute entity representation, i.e, the average of the entity tokens
-#         # entity mask is (batch_size, seq_len) binary tensor
-#         entity1_mask = entity1_mask.unsqueeze(-1).expand_as(sequence_output).type_as(sequence_output)
-#         entity2_mask = entity2_mask.unsqueeze(-1).expand_as(sequence_output).type_as(sequence_output)
-#         entity1_output = sequence_output * entity1_mask
-#         entity2_output = sequence_output * entity2_mask
-#         entity1_output = entity1_output.sum(1) / entity1_mask.sum(1)
-#         entity2_output = entity2_output.sum(1) / entity2_mask.sum(1)
-#         entity_output = torch.cat([entity1_output, entity2_output], dim=1)
-        
-#         sequence_output = self.dropout(sequence_output)
-#         logits = self.classifier(entity_output)
-
-
-#         loss = None
-#         if labels is not None:
-#             with open("neg_pos_ratio.txt", "r") as f:
-#                 neg_pos_ratio = float(f.read())
-#             loss_fct = CrossEntropyLoss(weight=torch.tensor([1, neg_pos_ratio]).type_as(logits))
-#             loss = loss_fct(logits, labels)
-
-#         # if labels is not None:
-#         #     pos_loss = loss_fct(logits[labels==1], labels[labels==1])
-#         #     neg_loss = loss_fct(logits[labels==0], labels[labels==0])
-#         #     if not torch.isnan(pos_loss): 
-#         #         self.pos_logger.info(f"{pos_loss.item()}")
-#         #     if not torch.isnan(neg_loss):
-#         #         self.neg_logger.info(f"{neg_loss.item()}")
-
-#         if not return_dict:
-#             output = (logits,) + outputs[2:]
-#             return ((loss,) + output) if loss is not None else output
-
-#         return TokenClassifierOutput(
-#             loss=loss,
-#             logits=logits,
-#             hidden_states=outputs.hidden_states,
-#             attentions=outputs.attentions,
-#         )
 
 class LayoutLMv3ForTokenClassification(LayoutLMv3PreTrainedModel):
     _keys_to_ignore_on_load_unexpected = [r"pooler"]
@@ -1193,6 +1106,7 @@ class LayoutLMv3ForTokenClassification(LayoutLMv3PreTrainedModel):
         position_ids=None,
         valid_span=None,
         head_mask=None,
+        ro_attn=None,
         inputs_embeds=None,
         labels=None,
         output_attentions=None,
@@ -1214,6 +1128,7 @@ class LayoutLMv3ForTokenClassification(LayoutLMv3PreTrainedModel):
             token_type_ids=token_type_ids,
             position_ids=position_ids,
             head_mask=head_mask,
+            ro_attn=ro_attn,
             inputs_embeds=inputs_embeds,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
