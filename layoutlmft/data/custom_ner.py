@@ -46,7 +46,9 @@ class Funsd(datasets.GeneratorBasedBuilder):
     """Conll2003 dataset."""
 
     BUILDER_CONFIGS = [
-        CustomNERConfig(name="custom", version=datasets.Version("1.0.0"), description="Custom dataset"),
+        CustomNERConfig(name="Custom-default", version=datasets.Version("1.0.0"), description="Custom dataset(default)", data_dir="./layoutlmft/data/datasets/default"),
+        CustomNERConfig(name="Custom-ie", version=datasets.Version("1.0.0"), description="Custom dataset(ie)", data_dir="./layoutlmft/data/datasets/ie"),
+        CustomNERConfig(name="Custom-ori", version=datasets.Version("1.0.0"), description="Custom dataset(ori)", data_dir="./layoutlmft/data/datasets/ori"),
     ]
 
     def _info(self):
@@ -62,6 +64,14 @@ class Funsd(datasets.GeneratorBasedBuilder):
                             names=["O", "B-HEADER", "I-HEADER", "B-QUESTION", "I-QUESTION", "B-ANSWER", "I-ANSWER"]
                         )
                     ),
+                    "ro_spans": datasets.Sequence(
+                        {
+                            "head_start": datasets.Value("int64"),
+                            "head_end": datasets.Value("int64"),
+                            "tail_start": datasets.Value("int64"),
+                            "tail_end": datasets.Value("int64"),
+                        }
+                    ),
                     "image": datasets.Array3D(shape=(3, 224, 224), dtype="uint8"),
                     "image_path": datasets.Value("string"),
                 }
@@ -73,8 +83,8 @@ class Funsd(datasets.GeneratorBasedBuilder):
 
     def _split_generators(self, dl_manager):
         """Returns SplitGenerators."""
-        custom_ds = "./layoutlmft/data/datasets/"
         funsd = dl_manager.download_and_extract("https://guillaumejaume.github.io/FUNSD/dataset.zip")
+        custom_ds = self.config.data_dir
         return [
             datasets.SplitGenerator(
                 name=datasets.Split.TRAIN, gen_kwargs={"filepath": f"{custom_ds}/training_data/", "img_dir": f"{funsd}/dataset/"}
@@ -121,17 +131,24 @@ class Funsd(datasets.GeneratorBasedBuilder):
                     word_id_to_entity_label[word_id] = "O"
             assert np.array(word_id_to_entity_label == -1).sum() == 0
 
+            origin_id_to_stripped_id = {}
+            stripped_id = 0
             tokens_word_id = []
             for item in data["document"]:
                 cur_line_bboxes = []
                 words = item["words"]
-                words = [w for w in words if w["text"].strip() != ""]
-                if len(words) == 0:
-                    continue
+                stripped_words = []
                 for w in words:
+                    if w["text"].strip() == "":
+                        continue
+                    wid = w["id"]
+                    origin_id_to_stripped_id[wid] = stripped_id
+                    stripped_id += 1
+                    stripped_words.append(w)
                     tokens.append(w["text"])
-                    tokens_word_id.append(w["id"])
                     cur_line_bboxes.append(normalize_bbox(w["box"], size))
+                if len(stripped_words) == 0:
+                    continue
                 # by default: --segment_level_layout 1
                 # if do not want to use segment_level_layout, comment the following line
                 cur_line_bboxes = self.get_line_bbox(cur_line_bboxes)
@@ -150,7 +167,44 @@ class Funsd(datasets.GeneratorBasedBuilder):
                         ner_tag = ner_tag[:ner_tag.rfind('-')]
                         ner_tags.append(ner_tag)
             
+
+            entities = []
+            for i, entity in enumerate(data["label_entities"]):
+                assert i == entity["entity_id"]
+                cur_entity = {}
+                n_entity_words = len(entity["word_idx"])
+                assert n_entity_words > 0
+                prev_word_idx = -1
+                for j in range(n_entity_words):
+                    if j == 0:
+                        prev_word_idx = entity["word_idx"][j]
+                        continue
+                    assert entity["word_idx"][j] == prev_word_idx + 1
+                    prev_word_idx = entity["word_idx"][j]
+                for start_i in range(n_entity_words):
+                    if entity["word_idx"][start_i] in origin_id_to_stripped_id:
+                        cur_entity["start"] = origin_id_to_stripped_id[entity["word_idx"][start_i]]
+                        break
+                for end_i in range(n_entity_words-1, -1, -1):
+                    if entity["word_idx"][end_i] in origin_id_to_stripped_id:
+                        cur_entity["end"] = origin_id_to_stripped_id[entity["word_idx"][end_i]] + 1
+                        break
+                assert len(cur_entity) == 2
+                entities.append(cur_entity)    
+
+            n_entity = len(data["label_entities"])
+            assert n_entity == len(entities)
+            # read order
+            ro_spans = []
+            for linking in data["ro_linkings"]:
+                cur_span = {}
+                assert linking[0] < n_entity and linking[1] < n_entity
+                cur_span["head_start"] = entities[linking[0]]["start"]
+                cur_span["head_end"] = entities[linking[0]]["end"]
+                cur_span["tail_start"] = entities[linking[1]]["start"]
+                cur_span["tail_end"] = entities[linking[1]]["end"]
+                ro_spans.append(cur_span)
             
             uid = data["uid"]
-            yield uid, {"id": uid, "tokens": tokens, "bboxes": bboxes, "ner_tags": ner_tags,
-                         "image": image, "image_path": image_path}
+            yield uid, {"id": uid, "tokens": tokens, "bboxes": bboxes, "ner_tags": ner_tags, 
+                         "ro_spans": ro_spans, "image": image, "image_path": image_path}

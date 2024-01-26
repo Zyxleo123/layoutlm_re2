@@ -145,6 +145,7 @@ class DataTrainingArguments:
     )
     segment_level_layout: bool = field(default=True)
     visual_embed: bool = field(default=True)
+    ro_info: bool = field(default=True)
     data_dir: Optional[str] = field(default=None)
     input_size: int = field(default=224, metadata={"help": "images input size for backbone"})
     second_input_size: int = field(default=112, metadata={"help": "images input size for discrete vae"})
@@ -209,9 +210,10 @@ def main():
     if data_args.dataset_name == 'funsd':
         import layoutlmft.data.funsd_ner
         datasets = load_dataset(os.path.abspath(layoutlmft.data.funsd_ner.__file__), cache_dir=model_args.cache_dir)
-    elif data_args.dataset_name == 'custom':
+    elif data_args.dataset_name in ('custom-default', 'custom-ie', 'custom-ori'):
         import layoutlmft.data.custom_ner
-        datasets = load_dataset(os.path.abspath(layoutlmft.data.custom_ner.__file__), cache_dir=model_args.cache_dir)
+        builder_config_name = data_args.dataset_name.split('-')[1]
+        datasets = load_dataset(os.path.abspath(layoutlmft.data.custom_ner.__file__), cache_dir=model_args.cache_dir, name=builder_config_name)
     else:
         raise NotImplementedError()
 

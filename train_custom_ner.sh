@@ -8,7 +8,7 @@ export TOKENIZERS_PARALLELISM=false
 export PYTHONPATH="/root/layout:$PYTHONPATH"
 
 python examples/run_ner.py \
-  --dataset_name custom \
+  --dataset_name custom-default \
   --do_train \
   --do_eval \
   --model_name_or_path ./layoutlmv3-base-1028 \
@@ -25,6 +25,6 @@ python examples/run_ner.py \
   --gradient_accumulation_steps 16 \
   --dataloader_num_workers 8 \
   --logging_steps 1 \
-  --logging_dir ./logs-custom-ner- \
+  --logging_dir ./logs-custom-ner \
   --learning_rate 7e-5 \
   --seed 21 \

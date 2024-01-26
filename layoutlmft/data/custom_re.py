@@ -30,7 +30,7 @@ https://guillaumejaume.github.io/FUNSD/
 """
 
 
-class CustomDSReConfig(datasets.BuilderConfig):
+class CustomREConfig(datasets.BuilderConfig):
     """BuilderConfig for our custom dataset"""
 
     def __init__(self, **kwargs):
@@ -39,13 +39,15 @@ class CustomDSReConfig(datasets.BuilderConfig):
         Args:
           **kwargs: keyword arguments forwarded to super.
         """
-        super(CustomDSReConfig, self).__init__(**kwargs)
+        super(CustomREConfig, self).__init__(**kwargs)
 
 
 class CustomDS(datasets.GeneratorBasedBuilder):
 
     BUILDER_CONFIGS = [
-        CustomDSReConfig(name="CustomDS", version=datasets.Version("1.0.0"), description="Custom dataset"),
+        CustomREConfig(name="Custom-default", version=datasets.Version("1.0.0"), description="Custom dataset(default)", data_dir="./layoutlmft/data/datasets/default"),
+        CustomREConfig(name="Custom-ie", version=datasets.Version("1.0.0"), description="Custom dataset(ie)", data_dir="./layoutlmft/data/datasets/ie"),
+        CustomREConfig(name="Custom-ori", version=datasets.Version("1.0.0"), description="Custom dataset(ori)", data_dir="./layoutlmft/data/datasets/ori"),
     ]
 
     def _info(self):
@@ -69,6 +71,14 @@ class CustomDS(datasets.GeneratorBasedBuilder):
                             "tail": datasets.Value("int64"),
                         }
                     ),
+                    "ro_spans": datasets.Sequence(
+                        {
+                            "head_start": datasets.Value("int64"),
+                            "head_end": datasets.Value("int64"),
+                            "tail_start": datasets.Value("int64"),
+                            "tail_end": datasets.Value("int64"),
+                        }
+                    ),
                     "image": datasets.Array3D(shape=(3, 224, 224), dtype="uint8"),
                     "image_path": datasets.Value("string"),
                 }
@@ -81,8 +91,7 @@ class CustomDS(datasets.GeneratorBasedBuilder):
     def _split_generators(self, dl_manager):
         """Returns SplitGenerators."""
         funsd = dl_manager.download_and_extract("https://guillaumejaume.github.io/FUNSD/dataset.zip")
-        custom_ds = "./layoutlmft/data/datasets/"
-        # print("funsd: ", funsd)
+        custom_ds = self.config.data_dir
         return [
             datasets.SplitGenerator(
                 name=datasets.Split.TRAIN, gen_kwargs={"filepath": f"{custom_ds}/training_data/", "img_dir": f"{funsd}/dataset/"}
@@ -182,6 +191,17 @@ class CustomDS(datasets.GeneratorBasedBuilder):
                 assert relation[0] < n_entity and relation[1] < n_entity
                 cur_relation["head"], cur_relation["tail"] = relation
                 relations.append(cur_relation) 
+            
+            # read order
+            ro_spans = []
+            for linking in data["ro_linkings"]:
+                cur_span = {}
+                assert linking[0] < n_entity and linking[1] < n_entity
+                cur_span["head_start"] = entities[linking[0]]["start"]
+                cur_span["head_end"] = entities[linking[0]]["end"]
+                cur_span["tail_start"] = entities[linking[1]]["start"]
+                cur_span["tail_end"] = entities[linking[1]]["end"]
+                ro_spans.append(cur_span)
 
             uid = data["uid"]
             yield uid, {
@@ -190,6 +210,7 @@ class CustomDS(datasets.GeneratorBasedBuilder):
                 "bboxes": bboxes,
                 "entities": entities,
                 "relations": relations,
+                "ro_spans": ro_spans,
                 "image": image,
                 "image_path": image_path,
             }
