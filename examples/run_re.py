@@ -79,6 +79,7 @@ class DataTrainingArguments:
     Arguments pertaining to what data we are going to input our model for training and eval.
     """
 
+    ro_info: bool = field()
     debug_mode: bool = field(default=False, metadata={"help": "debug mode"})
     task_name: Optional[str] = field(default="re", metadata={"help": "The name of the task (re, ner, pos...)."})
     dataset_name: Optional[str] = field(
@@ -147,7 +148,6 @@ class DataTrainingArguments:
     )
     segment_level_layout: bool = field(default=True)
     visual_embed: bool = field(default=True)
-    ro_info: bool = field(default=True)
     data_dir: Optional[str] = field(default=None)
     input_size: int = field(default=224, metadata={"help": "images input size for backbone"})
     second_input_size: int = field(default=112, metadata={"help": "images input size for discrete vae"})
@@ -213,9 +213,9 @@ def main():
         import layoutlmft.data.funsd_re
         datasets = load_dataset(os.path.abspath(layoutlmft.data.funsd_re.__file__), cache_dir=model_args.cache_dir)
     elif data_args.dataset_name in ('custom-default', 'custom-ie', 'custom-ori'):
-        import layoutlmft.data.custom_ner
+        import layoutlmft.data.custom_re
         builder_config_name = data_args.dataset_name.split('-')[1]
-        datasets = load_dataset(os.path.abspath(layoutlmft.data.custom_ner.__file__), cache_dir=model_args.cache_dir, name=builder_config_name)
+        datasets = load_dataset(os.path.abspath(layoutlmft.data.custom_re.__file__), cache_dir=model_args.cache_dir, name=builder_config_name)
     else:
         raise NotImplementedError()
 
@@ -306,6 +306,7 @@ def main():
         bboxes = []
         images = []
         entities = []
+        ro_attns = []
         batch_size = len(tokenized_inputs["input_ids"])
         for batch_index in range(batch_size):
             word_ids = tokenized_inputs.word_ids(batch_index=batch_index)
@@ -315,6 +316,33 @@ def main():
             aligned_end_word_idxs = []
             bbox = examples["bboxes"][batch_index]
             previous_word_idx = None
+
+            # read order
+            if data_args.ro_info:
+                ro_span = examples["ro_spans"][batch_index]
+                head_start_word, head_end_word, tail_start_word, tail_end_word = ro_span["head_start"], ro_span["head_end"], ro_span["tail_start"], ro_span["tail_end"]
+                head_start_token = head_end_token = tail_start_token = tail_end_token = None
+
+                for token_idx, word_idx in enumerate(word_ids):
+                    if word_idx == head_start_word and head_start_token is None:
+                        head_start_token = token_idx
+                    if word_idx == head_end_word and head_end_token is None:
+                        head_end_token = token_idx
+                    if word_idx == tail_start_word and tail_start_token is None:
+                        tail_start_token = token_idx
+                    if word_idx == tail_end_word and tail_end_token is None:
+                        tail_end_token = token_idx
+                assert head_start_token is not None and tail_start_token is not None
+                if head_end_token is None:
+                    head_end_token = len(word_ids) - 1
+                if tail_end_token is None:
+                    tail_end_token = len(word_ids) - 1
+                ro_attn = ([[0] * len(word_ids)]) * len(word_ids)
+                for i in range(head_start_token, head_end_token):
+                    for j in range(tail_start_token, tail_end_token):
+                        ro_attn[i][j] = 1
+                ro_attns.append(ro_attn)
+
             # Outer loop: for every entity(bbox_inputs has the same outcome every loop, but to keep the code clean, we put it here)
             for start_word_idx, end_word_idx in zip(start_word_idxs, end_word_idxs):
                 bbox_inputs = []
@@ -361,6 +389,8 @@ def main():
         tokenized_inputs["relations"] = examples["relations"]
         # dummy labels because the trainer needs them
         tokenized_inputs["labels"] = [10000] * batch_size
+        if data_args.ro_info:
+            tokenized_inputs["ro_attn"] = ro_attns
         if data_args.visual_embed:
             tokenized_inputs["images"] = images
 

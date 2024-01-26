@@ -46,9 +46,9 @@ class Funsd(datasets.GeneratorBasedBuilder):
     """Conll2003 dataset."""
 
     BUILDER_CONFIGS = [
-        CustomNERConfig(name="Custom-default", version=datasets.Version("1.0.0"), description="Custom dataset(default)", data_dir="./layoutlmft/data/datasets/default"),
-        CustomNERConfig(name="Custom-ie", version=datasets.Version("1.0.0"), description="Custom dataset(ie)", data_dir="./layoutlmft/data/datasets/ie"),
-        CustomNERConfig(name="Custom-ori", version=datasets.Version("1.0.0"), description="Custom dataset(ori)", data_dir="./layoutlmft/data/datasets/ori"),
+        CustomNERConfig(name="default", version=datasets.Version("1.0.0"), description="Custom dataset(default)", data_dir="./layoutlmft/data/datasets/default"),
+        CustomNERConfig(name="ie", version=datasets.Version("1.0.0"), description="Custom dataset(ie)", data_dir="./layoutlmft/data/datasets/ie"),
+        CustomNERConfig(name="ori", version=datasets.Version("1.0.0"), description="Custom dataset(ori)", data_dir="./layoutlmft/data/datasets/ori"),
     ]
 
     def _info(self):

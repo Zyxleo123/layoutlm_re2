@@ -327,9 +327,36 @@ def main():
         labels = []
         bboxes = []
         images = []
+        ro_attns = []
         for batch_index in range(len(tokenized_inputs["input_ids"])):
             word_ids = tokenized_inputs.word_ids(batch_index=batch_index)
             org_batch_index = tokenized_inputs["overflow_to_sample_mapping"][batch_index]
+            assert batch_index == org_batch_index
+
+            # read order
+            ro_span = examples["ro_spans"][batch_index]
+            head_start_word, head_end_word, tail_start_word, tail_end_word = ro_span["head_start"], ro_span["head_end"], ro_span["tail_start"], ro_span["tail_end"]
+            head_start_token = head_end_token = tail_start_token = tail_end_token = None
+
+            for token_idx, word_idx in enumerate(word_ids):
+                if word_idx == head_start_word and head_start_token is None:
+                    head_start_token = token_idx
+                if word_idx == head_end_word and head_end_token is None:
+                    head_end_token = token_idx
+                if word_idx == tail_start_word and tail_start_token is None:
+                    tail_start_token = token_idx
+                if word_idx == tail_end_word and tail_end_token is None:
+                    tail_end_token = token_idx
+            assert head_start_token is not None and tail_start_token is not None
+            if head_end_token is None:
+                head_end_token = len(word_ids) - 1
+            if tail_end_token is None:
+                tail_end_token = len(word_ids) - 1
+            ro_attn = ([[0] * len(word_ids)]) * len(word_ids)
+            for i in range(head_start_token, head_end_token):
+                for j in range(tail_start_token, tail_end_token):
+                    ro_attn[i][j] = 1
+            ro_attns.append(ro_attn)
 
             label = examples[label_column_name][org_batch_index]
             bbox = examples["bboxes"][org_batch_index]
@@ -364,6 +391,8 @@ def main():
 
         tokenized_inputs["labels"] = labels
         tokenized_inputs["bbox"] = bboxes
+        if data_args.ro_info:
+            tokenized_inputs["ro_attn"] = ro_attns
         if data_args.visual_embed:
             tokenized_inputs["images"] = images
 

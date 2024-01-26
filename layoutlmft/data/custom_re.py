@@ -33,21 +33,22 @@ https://guillaumejaume.github.io/FUNSD/
 class CustomREConfig(datasets.BuilderConfig):
     """BuilderConfig for our custom dataset"""
 
-    def __init__(self, **kwargs):
+    def __init__(self, ro_info, **kwargs):
         """BuilderConfig for FUNSD.
 
         Args:
           **kwargs: keyword arguments forwarded to super.
         """
         super(CustomREConfig, self).__init__(**kwargs)
+        self.ro_info = ro_info
 
 
 class CustomDS(datasets.GeneratorBasedBuilder):
 
     BUILDER_CONFIGS = [
-        CustomREConfig(name="Custom-default", version=datasets.Version("1.0.0"), description="Custom dataset(default)", data_dir="./layoutlmft/data/datasets/default"),
-        CustomREConfig(name="Custom-ie", version=datasets.Version("1.0.0"), description="Custom dataset(ie)", data_dir="./layoutlmft/data/datasets/ie"),
-        CustomREConfig(name="Custom-ori", version=datasets.Version("1.0.0"), description="Custom dataset(ori)", data_dir="./layoutlmft/data/datasets/ori"),
+        CustomREConfig(name="default", version=datasets.Version("1.0.0"), description="Custom dataset(default)", data_dir="./layoutlmft/data/datasets/default", ro_info=False),
+        CustomREConfig(name="ie", version=datasets.Version("1.0.0"), description="Custom dataset(ie)", data_dir="./layoutlmft/data/datasets/ie", ro_info=True),
+        CustomREConfig(name="ori", version=datasets.Version("1.0.0"), description="Custom dataset(ori)", data_dir="./layoutlmft/data/datasets/ori", ro_info=True),
     ]
 
     def _info(self):
@@ -193,15 +194,17 @@ class CustomDS(datasets.GeneratorBasedBuilder):
                 relations.append(cur_relation) 
             
             # read order
+            
             ro_spans = []
-            for linking in data["ro_linkings"]:
-                cur_span = {}
-                assert linking[0] < n_entity and linking[1] < n_entity
-                cur_span["head_start"] = entities[linking[0]]["start"]
-                cur_span["head_end"] = entities[linking[0]]["end"]
-                cur_span["tail_start"] = entities[linking[1]]["start"]
-                cur_span["tail_end"] = entities[linking[1]]["end"]
-                ro_spans.append(cur_span)
+            if self.config.ro_info:
+                for linking in data["ro_linkings"]:
+                    cur_span = {}
+                    assert linking[0] < n_entity and linking[1] < n_entity
+                    cur_span["head_start"] = entities[linking[0]]["start"]
+                    cur_span["head_end"] = entities[linking[0]]["end"]
+                    cur_span["tail_start"] = entities[linking[1]]["start"]
+                    cur_span["tail_end"] = entities[linking[1]]["end"]
+                    ro_spans.append(cur_span)
 
             uid = data["uid"]
             yield uid, {

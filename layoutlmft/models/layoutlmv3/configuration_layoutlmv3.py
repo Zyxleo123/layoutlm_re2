@@ -36,6 +36,8 @@ class LayoutLMv3Config(BertConfig):
         discrete_vae_type='dall-e',
         input_size=224,
         second_input_size=112,
+        lam=0.1,
+        ro_layers=4,
         device='cuda',
         **kwargs
     ):
@@ -57,4 +59,7 @@ class LayoutLMv3Config(BertConfig):
         self.discrete_vae_type = discrete_vae_type
         self.input_size = input_size
         self.second_input_size = second_input_size
+        self.lam = lam
+        self.ro_layers = ro_layers
         self.device = device
+

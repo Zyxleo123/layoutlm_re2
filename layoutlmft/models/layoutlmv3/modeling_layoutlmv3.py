@@ -623,7 +623,7 @@ class LayoutLMv3Encoder(nn.Module):
             j = 0
 
         for i, layer_module in enumerate(self.layer):
-            if i > self.config.ro_layers:
+            if i > self.config.ro_layers - 1:
                 ro_attn = None
 
             if output_hidden_states:
