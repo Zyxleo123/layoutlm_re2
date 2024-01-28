@@ -653,8 +653,8 @@ class LayoutLMv3Encoder(nn.Module):
                     create_custom_forward(layer_module),
                     hidden_states,
                     attention_mask,
-                    ro_attn,
                     layer_head_mask,
+                    ro_attn,
                     encoder_hidden_states,
                     encoder_attention_mask,
                     past_key_value,
@@ -666,8 +666,8 @@ class LayoutLMv3Encoder(nn.Module):
                 layer_outputs = layer_module(
                     hidden_states,
                     attention_mask,
-                    ro_attn,
                     layer_head_mask,
+                    ro_attn,
                     encoder_hidden_states,
                     encoder_attention_mask,
                     past_key_value,
@@ -1073,6 +1073,12 @@ class LayoutLMv3ForRelationExtraction(LayoutLMv3PreTrainedModel):
         sequence_output = self.dropout(sequence_output)
         loss, pred_relations = self.extractor(sequence_output, entities, relations)
 
+        lams = []
+        for i in range(self.config.ro_layers):
+            lam = self.layoutlmv3.encoder.layer[i].attention.self.lam.item()
+            lams.append("{:.1e}".format(lam))
+        logger.warning(lams)
+
         return ReOutput(
             loss=loss,
             entities=entities,
@@ -1113,6 +1119,7 @@ class LayoutLMv3ForTokenClassification(LayoutLMv3PreTrainedModel):
         output_hidden_states=None,
         return_dict=None,
         images=None,
+        image_path=None,
     ):
         r"""
         labels (:obj:`torch.LongTensor` of shape :obj:`(batch_size, sequence_length)`, `optional`):
@@ -1155,6 +1162,12 @@ class LayoutLMv3ForTokenClassification(LayoutLMv3PreTrainedModel):
                 loss = loss_fct(active_logits, active_labels)
             else:
                 loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
+
+        lams = []
+        for i in range(self.config.ro_layers):
+            lam = self.layoutlmv3.encoder.layer[i].attention.self.lam
+            lams.append("{:.1e}".format(lam))
+        logger.info(lams)
 
         if not return_dict:
             output = (logits,) + outputs[2:]

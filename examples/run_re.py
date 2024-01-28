@@ -50,6 +50,8 @@ class ModelArguments:
     model_name_or_path: str = field(
         metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
     )
+    lam: float = field(default=0.1, metadata={"help": "lambda for read order attention matrix"})
+    ro_layers: int = field(default=4, metadata={"help": "number of ro layers"})
     config_name: Optional[str] = field(
         default=None, metadata={"help": "Pretrained config name or path if not the same as model_name"}
     )
@@ -246,6 +248,9 @@ def main():
         input_size=data_args.input_size,
         use_auth_token=True if model_args.use_auth_token else None,
     )
+    config.lam = model_args.lam
+    config.ro_layers = model_args.ro_layers
+
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.tokenizer_name if model_args.tokenizer_name else model_args.model_name_or_path,
         cache_dir=model_args.cache_dir,
@@ -310,6 +315,7 @@ def main():
         batch_size = len(tokenized_inputs["input_ids"])
         for batch_index in range(batch_size):
             word_ids = tokenized_inputs.word_ids(batch_index=batch_index)
+            ro_attn = [[0] * len(word_ids) for _ in range(len(word_ids))]
             start_word_idxs = examples["entities"][batch_index]["start"]
             end_word_idxs = examples["entities"][batch_index]["end"]
             aligned_start_word_idxs = []
@@ -320,27 +326,26 @@ def main():
             # read order
             if data_args.ro_info:
                 ro_span = examples["ro_spans"][batch_index]
-                head_start_word, head_end_word, tail_start_word, tail_end_word = ro_span["head_start"], ro_span["head_end"], ro_span["tail_start"], ro_span["tail_end"]
-                head_start_token = head_end_token = tail_start_token = tail_end_token = None
-
-                for token_idx, word_idx in enumerate(word_ids):
-                    if word_idx == head_start_word and head_start_token is None:
-                        head_start_token = token_idx
-                    if word_idx == head_end_word and head_end_token is None:
-                        head_end_token = token_idx
-                    if word_idx == tail_start_word and tail_start_token is None:
-                        tail_start_token = token_idx
-                    if word_idx == tail_end_word and tail_end_token is None:
-                        tail_end_token = token_idx
-                assert head_start_token is not None and tail_start_token is not None
-                if head_end_token is None:
-                    head_end_token = len(word_ids) - 1
-                if tail_end_token is None:
-                    tail_end_token = len(word_ids) - 1
-                ro_attn = ([[0] * len(word_ids)]) * len(word_ids)
-                for i in range(head_start_token, head_end_token):
-                    for j in range(tail_start_token, tail_end_token):
-                        ro_attn[i][j] = 1
+                head_start_words, head_end_words, tail_start_words, tail_end_words = ro_span["head_start"], ro_span["head_end"], ro_span["tail_start"], ro_span["tail_end"]
+                for head_start_word, head_end_word, tail_start_word, tail_end_word in zip(head_start_words, head_end_words, tail_start_words, tail_end_words):
+                    head_start_token = head_end_token = tail_start_token = tail_end_token = None
+                    for token_idx, word_idx in enumerate(word_ids):
+                        if word_idx == head_start_word and head_start_token is None:
+                            head_start_token = token_idx
+                        if word_idx == head_end_word and head_end_token is None:
+                            head_end_token = token_idx
+                        if word_idx == tail_start_word and tail_start_token is None:
+                            tail_start_token = token_idx
+                        if word_idx == tail_end_word and tail_end_token is None:
+                            tail_end_token = token_idx
+                    assert head_start_token is not None and tail_start_token is not None
+                    if head_end_token is None:
+                        head_end_token = len(word_ids) - 1
+                    if tail_end_token is None:
+                        tail_end_token = len(word_ids) - 1
+                    for i in range(head_start_token, head_end_token):
+                        for j in range(tail_start_token, tail_end_token):
+                            ro_attn[i][j] = 1
                 ro_attns.append(ro_attn)
 
             # Outer loop: for every entity(bbox_inputs has the same outcome every loop, but to keep the code clean, we put it here)
@@ -473,7 +478,6 @@ def main():
             "recall": recall,
             "f1": f1,
         }
-            
 
     # Initialize our Trainer
     trainer = FunsdReTrainer(

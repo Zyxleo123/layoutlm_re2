@@ -183,7 +183,7 @@ class CustomDS(datasets.GeneratorBasedBuilder):
                 cur_entity["label"] = label_id_map[entity["label"]]
                 assert cur_entity["label"] != 3
                 assert len(cur_entity) == 3
-                entities.append(cur_entity)    
+                entities.append(cur_entity) 
             
             relations = []
             
@@ -194,16 +194,28 @@ class CustomDS(datasets.GeneratorBasedBuilder):
                 relations.append(cur_relation) 
             
             # read order
-            
             ro_spans = []
             if self.config.ro_info:
                 for linking in data["ro_linkings"]:
                     cur_span = {}
-                    assert linking[0] < n_entity and linking[1] < n_entity
-                    cur_span["head_start"] = entities[linking[0]]["start"]
-                    cur_span["head_end"] = entities[linking[0]]["end"]
-                    cur_span["tail_start"] = entities[linking[1]]["start"]
-                    cur_span["tail_end"] = entities[linking[1]]["end"]
+                    head_seg, tail_seg = linking
+                    for word in data["document"][head_seg]["words"]:
+                        if word["id"] in origin_id_to_stripped_id:
+                            cur_span["head_start"] = origin_id_to_stripped_id[word["id"]]
+                            break
+                    for word in data["document"][tail_seg]["words"]:
+                        if word["id"] in origin_id_to_stripped_id:
+                            cur_span["tail_start"] = origin_id_to_stripped_id[word["id"]]
+                            break
+                    for word in data["document"][head_seg]["words"][::-1]:
+                        if word["id"] in origin_id_to_stripped_id:
+                            cur_span["head_end"] = origin_id_to_stripped_id[word["id"]] + 1
+                            break
+                    for word in data["document"][tail_seg]["words"][::-1]:
+                        if word["id"] in origin_id_to_stripped_id:
+                            cur_span["tail_end"] = origin_id_to_stripped_id[word["id"]] + 1
+                            break
+                    assert len(cur_span) == 4
                     ro_spans.append(cur_span)
 
             uid = data["uid"]

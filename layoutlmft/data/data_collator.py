@@ -94,6 +94,7 @@ class DataCollatorForKeyValueExtraction(DataCollatorMixin):
         has_ro_input = "ro_attn" in features[0]
         padding_idx=self.tokenizer.pad_token_id
         sequence_length = torch.tensor(batch["input_ids"]).shape[1]
+        tot_length = sequence_length + IMAGE_LEN
         padding_side = self.tokenizer.padding_side
         if padding_side == "right":
             if task == "token_classification":
@@ -104,7 +105,8 @@ class DataCollatorForKeyValueExtraction(DataCollatorMixin):
                 batch["position_ids"] = [position_id + [padding_idx] * (sequence_length - len(position_id))
                                           for position_id in batch["position_ids"]]
             if has_ro_input:
-                batch["ro_attn"]
+                batch["ro_attn"] = [[row+(tot_length-len(row))*[0] for row in ro_attn] for ro_attn in batch["ro_attn"]]
+                batch["ro_attn"] = [ro_attn+(tot_length-len(ro_attn))*[[0]*tot_length] for ro_attn in batch["ro_attn"]]
 
         else:
             if task == "token_classification":

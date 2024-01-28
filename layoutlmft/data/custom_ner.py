@@ -33,22 +33,23 @@ https://guillaumejaume.github.io/FUNSD/
 class CustomNERConfig(datasets.BuilderConfig):
     """BuilderConfig for out custom dataset"""
 
-    def __init__(self, **kwargs):
+    def __init__(self, ro_info, **kwargs):
         """BuilderConfig for our custom dataset.
 
         Args:
           **kwargs: keyword arguments forwarded to super.
         """
         super(CustomNERConfig, self).__init__(**kwargs)
+        self.ro_info = ro_info
 
 
 class Funsd(datasets.GeneratorBasedBuilder):
     """Conll2003 dataset."""
 
     BUILDER_CONFIGS = [
-        CustomNERConfig(name="default", version=datasets.Version("1.0.0"), description="Custom dataset(default)", data_dir="./layoutlmft/data/datasets/default"),
-        CustomNERConfig(name="ie", version=datasets.Version("1.0.0"), description="Custom dataset(ie)", data_dir="./layoutlmft/data/datasets/ie"),
-        CustomNERConfig(name="ori", version=datasets.Version("1.0.0"), description="Custom dataset(ori)", data_dir="./layoutlmft/data/datasets/ori"),
+        CustomNERConfig(name="default", version=datasets.Version("1.0.0"), description="Custom dataset(default)", data_dir="./layoutlmft/data/datasets/default", ro_info=False),
+        CustomNERConfig(name="ie", version=datasets.Version("1.0.0"), description="Custom dataset(ie)", data_dir="./layoutlmft/data/datasets/ie", ro_info=True),
+        CustomNERConfig(name="ori", version=datasets.Version("1.0.0"), description="Custom dataset(ori)", data_dir="./layoutlmft/data/datasets/ori", ro_info=True),
     ]
 
     def _info(self):
@@ -146,6 +147,7 @@ class Funsd(datasets.GeneratorBasedBuilder):
                     stripped_id += 1
                     stripped_words.append(w)
                     tokens.append(w["text"])
+                    tokens_word_id.append(wid)
                     cur_line_bboxes.append(normalize_bbox(w["box"], size))
                 if len(stripped_words) == 0:
                     continue
@@ -167,43 +169,30 @@ class Funsd(datasets.GeneratorBasedBuilder):
                         ner_tag = ner_tag[:ner_tag.rfind('-')]
                         ner_tags.append(ner_tag)
             
-
-            entities = []
-            for i, entity in enumerate(data["label_entities"]):
-                assert i == entity["entity_id"]
-                cur_entity = {}
-                n_entity_words = len(entity["word_idx"])
-                assert n_entity_words > 0
-                prev_word_idx = -1
-                for j in range(n_entity_words):
-                    if j == 0:
-                        prev_word_idx = entity["word_idx"][j]
-                        continue
-                    assert entity["word_idx"][j] == prev_word_idx + 1
-                    prev_word_idx = entity["word_idx"][j]
-                for start_i in range(n_entity_words):
-                    if entity["word_idx"][start_i] in origin_id_to_stripped_id:
-                        cur_entity["start"] = origin_id_to_stripped_id[entity["word_idx"][start_i]]
-                        break
-                for end_i in range(n_entity_words-1, -1, -1):
-                    if entity["word_idx"][end_i] in origin_id_to_stripped_id:
-                        cur_entity["end"] = origin_id_to_stripped_id[entity["word_idx"][end_i]] + 1
-                        break
-                assert len(cur_entity) == 2
-                entities.append(cur_entity)    
-
-            n_entity = len(data["label_entities"])
-            assert n_entity == len(entities)
             # read order
             ro_spans = []
-            for linking in data["ro_linkings"]:
-                cur_span = {}
-                assert linking[0] < n_entity and linking[1] < n_entity
-                cur_span["head_start"] = entities[linking[0]]["start"]
-                cur_span["head_end"] = entities[linking[0]]["end"]
-                cur_span["tail_start"] = entities[linking[1]]["start"]
-                cur_span["tail_end"] = entities[linking[1]]["end"]
-                ro_spans.append(cur_span)
+            if self.config.ro_info:
+                for linking in data["ro_linkings"]:
+                    cur_span = {}
+                    head_seg, tail_seg = linking
+                    for word in data["document"][head_seg]["words"]:
+                        if word["id"] in origin_id_to_stripped_id:
+                            cur_span["head_start"] = origin_id_to_stripped_id[word["id"]]
+                            break
+                    for word in data["document"][tail_seg]["words"]:
+                        if word["id"] in origin_id_to_stripped_id:
+                            cur_span["tail_start"] = origin_id_to_stripped_id[word["id"]]
+                            break
+                    for word in data["document"][head_seg]["words"][::-1]:
+                        if word["id"] in origin_id_to_stripped_id:
+                            cur_span["head_end"] = origin_id_to_stripped_id[word["id"]] + 1
+                            break
+                    for word in data["document"][tail_seg]["words"][::-1]:
+                        if word["id"] in origin_id_to_stripped_id:
+                            cur_span["tail_end"] = origin_id_to_stripped_id[word["id"]] + 1
+                            break
+                    assert len(cur_span) == 4
+                    ro_spans.append(cur_span)
             
             uid = data["uid"]
             yield uid, {"id": uid, "tokens": tokens, "bboxes": bboxes, "ner_tags": ner_tags, 
