@@ -3,7 +3,7 @@
 # 目前只支持单卡
 
 export CUDA_DEVICE_ORDER=PCI_BUS_ID
-export CUDA_VISIBLE_DEVICES=3
+export CUDA_VISIBLE_DEVICES=7
 export TOKENIZERS_PARALLELISM=false
 export PYTHONPATH="/root/layout:$PYTHONPATH"
 
@@ -26,7 +26,7 @@ python examples/run_ner.py \
   --gradient_accumulation_steps 16 \
   --dataloader_num_workers 8 \
   --logging_steps 1 \
-  --logging_dir ./logs/ner/ie/seed-d/30.0_9 \
+  --logging_dir ./logs/ner/ie/seed-d/15.0_3 \
   --learning_rate 7e-5 \
   --lam 15.0 \
-  --ro_layers 9 \
+  --ro_layers 3 \

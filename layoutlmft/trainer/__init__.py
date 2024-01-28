@@ -1,1 +1,1 @@
-from .funsd_trainer import FunsdTrainer, FunsdReTrainer, FunsdSerTrainer
+from .trainer import RETrainer, NERTrainer

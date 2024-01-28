@@ -29,7 +29,7 @@ from transformers.utils import check_min_version
 
 from layoutlmft.models.layoutlmv3.modeling_layoutlmv3 import LayoutLMv3ForRelationExtraction
 from layoutlmft.models.layoutlmv3.tokenization_layoutlmv3_fast import LayoutLMv3Tokenizer, LayoutLMv3TokenizerFast
-from layoutlmft.trainer.funsd_trainer import FunsdReTrainer
+from layoutlmft.trainer.trainer import RETrainer
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.5.0")
@@ -480,7 +480,7 @@ def main():
         }
 
     # Initialize our Trainer
-    trainer = FunsdReTrainer(
+    trainer = RETrainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset if training_args.do_train else None,

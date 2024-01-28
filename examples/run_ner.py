@@ -34,6 +34,7 @@ check_min_version("4.5.0")
 logger = logging.getLogger(__name__)
 from layoutlmft.data.image_utils import RandomResizedCropAndInterpolationWithTwoPic, pil_loader, Compose
 from layoutlmft.models.layoutlmv3.modeling_layoutlmv3 import LayoutLMv3ForTokenClassification
+from layoutlmft.trainer.trainer import NERTrainer
 
 from timm.data.constants import \
     IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD, IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD
@@ -491,7 +492,7 @@ def main():
             }
 
     # Initialize our Trainer
-    trainer = Trainer(
+    trainer = NERTrainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset if training_args.do_train else None,
