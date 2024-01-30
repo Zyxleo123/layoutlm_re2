@@ -34,7 +34,7 @@ check_min_version("4.5.0")
 logger = logging.getLogger(__name__)
 from layoutlmft.data.image_utils import RandomResizedCropAndInterpolationWithTwoPic, pil_loader, Compose
 from layoutlmft.models.layoutlmv3.modeling_layoutlmv3 import LayoutLMv3ForTokenClassification
-from layoutlmft.trainer.trainer import NERTrainer
+from layoutlmft.trainer.trainer import NERTrainer, ROTrainingArguments
 
 from timm.data.constants import \
     IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD, IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD
@@ -163,7 +163,7 @@ def main():
     # or by passing the --help flag to this script.
     # We now keep distinct sets of args, for a cleaner separation of concerns.
 
-    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
+    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, ROTrainingArguments))
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
         # If we pass only one argument to the script and it's the path to a json file,
         # let's parse it to get our arguments.

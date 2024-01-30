@@ -1,5 +1,6 @@
 import collections
 import time
+from dataclasses import field
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
@@ -12,12 +13,20 @@ from transformers.trainer_utils import EvalPrediction, PredictionOutput, speed_m
 from transformers.utils import logging
 from transformers.trainer_pt_utils import get_parameter_names
 from transformers.optimization import AdamW, Adafactor
+from transformers import TrainingArguments
 
 if version.parse(torch.__version__) >= version.parse("1.6"):
     _is_native_amp_available = True
     from torch.cuda.amp import autocast
 
 logger = logging.get_logger(__name__)
+
+from dataclasses import dataclass
+from typing import Optional
+
+@dataclass
+class ROTrainingArguments(TrainingArguments):
+    lam_lr: Optional[float] = field(default=1e-1, metadata={"help": "The learning rate for LAM."})
 
 class NERTrainer(Trainer):
     def log(self, logs: Dict[str, float]) -> None:
@@ -40,20 +49,21 @@ class NERTrainer(Trainer):
         """
         if self.optimizer is None:
             decay_parameters = get_parameter_names(self.model, [nn.LayerNorm])
-            decay_parameters = [name for name in decay_parameters if "bias" not in name]
-            lam_parameters = [name for name in decay_parameters if "lam" in name]
+            decay_parameters = [name for name in decay_parameters if "bias" not in name and "lam" not in name]
+            lam_parameters = get_parameter_names(self.model, [])
+            lam_parameters = [name for name in lam_parameters if "lam" in name]
             optimizer_grouped_parameters = [
                 {
                     "params": [p for n, p in self.model.named_parameters() if n in lam_parameters],
                     "weight_decay": self.args.weight_decay,
-                    "lr": 1e-2,
+                    "lr": self.args.lam_lr,
                 },
                 {
                     "params": [p for n, p in self.model.named_parameters() if n in decay_parameters],
                     "weight_decay": self.args.weight_decay,
                 },
                 {
-                    "params": [p for n, p in self.model.named_parameters() if n not in decay_parameters],
+                    "params": [p for n, p in self.model.named_parameters() if n not in decay_parameters and n not in lam_parameters],
                     "weight_decay": 0.0,
                 },
             ]
@@ -84,20 +94,21 @@ class RETrainer(Trainer):
         """
         if self.optimizer is None:
             decay_parameters = get_parameter_names(self.model, [nn.LayerNorm])
-            decay_parameters = [name for name in decay_parameters if "bias" not in name]
-            lam_parameters = [name for name in decay_parameters if "lam" in name]
+            decay_parameters = [name for name in decay_parameters if "bias" not in name and "lam" not in name]
+            lam_parameters = get_parameter_names(self.model, [])
+            lam_parameters = [name for name in lam_parameters if "lam" in name]
             optimizer_grouped_parameters = [
                 {
                     "params": [p for n, p in self.model.named_parameters() if n in lam_parameters],
                     "weight_decay": self.args.weight_decay,
-                    "lr": 1e-2,
+                    "lr": self.args.lam_lr,
                 },
                 {
                     "params": [p for n, p in self.model.named_parameters() if n in decay_parameters],
                     "weight_decay": self.args.weight_decay,
                 },
                 {
-                    "params": [p for n, p in self.model.named_parameters() if n not in decay_parameters],
+                    "params": [p for n, p in self.model.named_parameters() if n not in decay_parameters and n not in lam_parameters],
                     "weight_decay": 0.0,
                 },
             ]
@@ -113,7 +124,7 @@ class RETrainer(Trainer):
                 }
             optimizer_kwargs["lr"] = self.args.learning_rate
             self.optimizer = optimizer_cls(optimizer_grouped_parameters, **optimizer_kwargs)
-            
+
     def log(self, logs: Dict[str, float]) -> None:
         """
         Log :obj:`logs` on the various objects watching training.

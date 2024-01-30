@@ -6,6 +6,7 @@ from .configuration_layoutlmv3 import LayoutLMv3Config
 from .modeling_layoutlmv3 import (
     LayoutLMv3ForTokenClassification,
     LayoutLMv3ForQuestionAnswering,
+    LayoutLMv3ForRelationExtraction,
     LayoutLMv3ForSequenceClassification,
     LayoutLMv3Model,
 )
@@ -18,6 +19,7 @@ AutoModel.register(LayoutLMv3Config, LayoutLMv3Model)
 AutoModelForTokenClassification.register(LayoutLMv3Config, LayoutLMv3ForTokenClassification)
 AutoModelForQuestionAnswering.register(LayoutLMv3Config, LayoutLMv3ForQuestionAnswering)
 AutoModelForSequenceClassification.register(LayoutLMv3Config, LayoutLMv3ForSequenceClassification)
+AutoModelForSequenceClassification.register(LayoutLMv3Config, LayoutLMv3ForRelationExtraction)
 AutoTokenizer.register(
     LayoutLMv3Config, slow_tokenizer_class=LayoutLMv3Tokenizer, fast_tokenizer_class=LayoutLMv3TokenizerFast
 )

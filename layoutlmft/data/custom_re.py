@@ -125,8 +125,6 @@ class CustomDS(datasets.GeneratorBasedBuilder):
             with open(file_path, "r", encoding="utf8") as f:
                 data = json.load(f)
                 doc = data["document"]
-            n_entity = len(data["label_entities"])
-            n_relation = len(data["label_linkings"])
 
             image_path = os.path.join(img_dir, data["img"]["fname"])
             image, size = load_image(image_path)
@@ -159,9 +157,10 @@ class CustomDS(datasets.GeneratorBasedBuilder):
             
             # decide the start and end of every entity based on origin_id_to_stripped_id
             label_id_map = {"header": 0, "question": 1, "answer": 2, "other": 3}
+            entity_id_to_list_idx = {}
             entities = []
             for i, entity in enumerate(data["label_entities"]):
-                assert i == entity["entity_id"]
+                # assert i == entity["entity_id"]
                 cur_entity = {}
                 n_entity_words = len(entity["word_idx"])
                 assert n_entity_words > 0
@@ -184,13 +183,17 @@ class CustomDS(datasets.GeneratorBasedBuilder):
                 assert cur_entity["label"] != 3
                 assert len(cur_entity) == 3
                 entities.append(cur_entity) 
+                entity_id_to_list_idx[entity["entity_id"]] = i
             
+            n_entity = len(entities)
             relations = []
             
             for relation in data["label_linkings"]:
                 cur_relation = {}
-                assert relation[0] < n_entity and relation[1] < n_entity
-                cur_relation["head"], cur_relation["tail"] = relation
+                if any([relation[0] not in entity_id_to_list_idx, relation[1] not in entity_id_to_list_idx]):
+                    continue
+                assert entity_id_to_list_idx[relation[0]] < n_entity and entity_id_to_list_idx[relation[1]] < n_entity
+                cur_relation["head"], cur_relation["tail"] = [entity_id_to_list_idx[r] for r in relation]
                 relations.append(cur_relation) 
             
             # read order

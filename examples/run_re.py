@@ -29,7 +29,7 @@ from transformers.utils import check_min_version
 
 from layoutlmft.models.layoutlmv3.modeling_layoutlmv3 import LayoutLMv3ForRelationExtraction
 from layoutlmft.models.layoutlmv3.tokenization_layoutlmv3_fast import LayoutLMv3Tokenizer, LayoutLMv3TokenizerFast
-from layoutlmft.trainer.trainer import RETrainer
+from layoutlmft.trainer.trainer import RETrainer, ROTrainingArguments
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.5.0")
@@ -165,7 +165,7 @@ def main():
     # or by passing the --help flag to this script.
     # We now keep distinct sets of args, for a cleaner separation of concerns.
 
-    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
+    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, ROTrainingArguments))
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
         # If we pass only one argument to the script and it's the path to a json file,
         # let's parse it to get our arguments.
