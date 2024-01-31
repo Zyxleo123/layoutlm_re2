@@ -100,3 +100,22 @@ seed is fed to `random`, `numpy`, `torch`, `torch.cuda`
 | 21 | 0.6972 | 0.6798 | 0.9074 | 0.8246 |
 | 28 | 0.6839 | 0.6673 | 0.9073 | 0.8196 |
 | default | 0.7131 | 0.6772 | 0.911 | 0.8248 |
+
+# 4 RO results
+
+seed is fed to `random`, `numpy`, `torch`, `torch.cuda`
+
+| seed/task&dataset | ori_re | ie_re | ori_ner | ie_ner |
+| :---: | :---: | :---: | :---: | :---: |
+| 21 | 0.6927 | 0.6958 | 0.9049 | 0.8226 |
+| 28 | 0.682 | 0.6762 | 0.9067 | 0.8237 |
+| default | 0.729 | 0.7292 | 0.9165 | 0.8359 |
+
+Hyperparameters:
+
+| dataset_task | initial lam | ro layers | lam lr
+| :---: | :---: | :---: | :---: |
+| ner_ie | 0.1 | 12 | 0.02 | 
+| ner_ori | 1.0 | 7 | 0.1 |
+| kre_ie | 10 | 12 | 0 |
+| re_ori | 5 | 12 | 0.01 |
