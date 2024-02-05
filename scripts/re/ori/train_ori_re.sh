@@ -8,7 +8,7 @@ export TOKENIZERS_PARALLELISM=false
 export PYTHONPATH="/root/layout:$PYTHONPATH"
 
 python examples/run_re.py \
-  --dataset_name custom-ie \
+  --dataset_name custom-ori \
   --ro_info \
   --do_train \
   --do_eval \
@@ -27,8 +27,6 @@ python examples/run_re.py \
   --evaluation_strategy steps \
   --eval_steps 1000 \
   --logging_steps 1 \
-  --logging_dir ./logs/re/ie/seed-d/15.0_12 \
+  --logging_dir ./logs/re/ori/seed-d/15.0_12 \
   --lam 15.0 \
   --ro_layers 12 \
-
-

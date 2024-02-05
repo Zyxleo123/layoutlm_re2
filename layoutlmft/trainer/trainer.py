@@ -26,7 +26,7 @@ from typing import Optional
 
 @dataclass
 class ROTrainingArguments(TrainingArguments):
-    lam_lr: Optional[float] = field(default=1e-1, metadata={"help": "The learning rate for LAM."})
+    lam_lr: Optional[float] = field(default=0, metadata={"help": "The learning rate for LAM."})
 
 class NERTrainer(Trainer):
     def log(self, logs: Dict[str, float]) -> None:

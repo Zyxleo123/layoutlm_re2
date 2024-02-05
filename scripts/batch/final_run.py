@@ -1,17 +1,19 @@
+import itertools
 import subprocess
 import os
 
 script_base = "examples/"
 logging_base = "./logs/"
 
-dataset_task_to_params = {
-    "ner_ie": [[10, 3, 0.7], [0.1, 1, 0.1]], 
-    "ner_ori": [[0, 3, 3], [1.0, 7, 0.1]],
-    "re_ie": [[10, 12, 0]],
-    "re_ori": [[5, 12 ,0.01]],
-}
+ro_layers = [4, 12]
+lam_lrs = [0.02, None]
+lams = [0.01, 10]
+# ro_layers = [12]
+# lam_lrs = [None]
+# lams = [0.01, 10]
+params = list(itertools.product(ro_layers, lam_lrs, lams))
 
-seeds = [21, 28, 42]
+seeds = [42]
 
 # 其他固定的超参数
 fixed_args = [
@@ -32,14 +34,19 @@ fixed_args = [
 ]
 
 # 指定 GPU 索引列表
-gpu_indexes = [0, 1, 2, 3, 4, 5, 6, 7]
+gpu_indexes = [3, 4, 5, 6, 7]
 
 # 创建进程对象，每个进程负责一个GPU
 num_gpus = len(gpu_indexes)
 processes = [None] * num_gpus
 
+task_datasets = [
+    # "re_ie",
+    # "ner_ori",
+    "ner_ie",
+]
 i = 0
-for task_dataset, params in dataset_task_to_params.items():
+for task_dataset in task_datasets:
     task, dataset = task_dataset.split("_")
     script_name = "run_" + task + ".py"
     script_dir = os.path.join(script_base, script_name)
@@ -57,7 +64,9 @@ for task_dataset, params in dataset_task_to_params.items():
         for seed in seeds:
             gpu_index = gpu_indexes[i % num_gpus]
             i += 1
-            lam, ro_layers, lam_lr = param
+            ro_layers, lam_lr, lam = param
+            if lam_lr is None:
+                lam_lr = lr
             logging_dir = os.path.join(logging_base, task, dataset, "run", f"{lam}-{ro_layers}-{lam_lr}-{seed}")
             # 构建完整的命令
             python_command = " ".join([
@@ -81,9 +90,6 @@ for task_dataset, params in dataset_task_to_params.items():
                 "export PYTHONPATH=\"/root/layout:$PYTHONPATH\"",
                 python_command,
             ]
-            # 启动进程
-            print(" && ".join(command))
-            print('-' * 100)
-            # if processes[i % num_gpus] is not None:
-            #     processes[i % num_gpus].wait()
-            # processes[i % num_gpus] = subprocess.Popen(" && ".join(command), shell=True)
+            if processes[i % num_gpus] is not None:
+                processes[i % num_gpus].wait()
+            processes[i % num_gpus] = subprocess.Popen(" && ".join(command), shell=True)
