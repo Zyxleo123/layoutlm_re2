@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding=utf-8
-import pyarrow
-pyarrow.PyExtensionType.set_auto_load(True)
+# import pyarrow
+# pyarrow.PyExtensionType.set_auto_load(True)
 import logging
 import os
 import sys
