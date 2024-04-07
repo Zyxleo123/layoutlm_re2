@@ -216,6 +216,13 @@ def main():
         import layoutlmft.data.custom_ner
         builder_config_name = data_args.dataset_name.split('-')[1]
         datasets = load_dataset(os.path.abspath(layoutlmft.data.custom_ner.__file__), cache_dir=model_args.cache_dir, name=builder_config_name)
+    elif data_args.dataset_name in ('cord', 'sroie'):
+        import layoutlmft.data.cord_ner, layoutlmft.data.sroie_ner
+        builder_config_name = data_args.dataset_name
+        if data_args.dataset_name == 'cord':
+            datasets = load_dataset(os.path.abspath(layoutlmft.data.cord_ner.__file__), cache_dir=model_args.cache_dir, name='default')
+        elif data_args.dataset_name == 'sroie':
+            datasets = load_dataset(os.path.abspath(layoutlmft.data.sroie_ner.__file__), cache_dir=model_args.cache_dir, name='default')
     else:
         raise NotImplementedError()
 
@@ -341,8 +348,9 @@ def main():
             if data_args.ro_info:
                 ro_attn = [[0] * len(word_ids) for _ in range(len(word_ids))]
                 ro_span = examples["ro_spans"][batch_index]
+                dbg_image_path = examples["image_path"][org_batch_index]
                 head_start_words, head_end_words, tail_start_words, tail_end_words = ro_span["head_start"], ro_span["head_end"], ro_span["tail_start"], ro_span["tail_end"]
-                for head_start_word, head_end_word, tail_start_word, tail_end_word in zip(head_start_words, head_end_words, tail_start_words, tail_end_words):
+                for i, (head_start_word, head_end_word, tail_start_word, tail_end_word) in enumerate(zip(head_start_words, head_end_words, tail_start_words, tail_end_words)):
                     head_start_token = head_end_token = tail_start_token = tail_end_token = None
                     for token_idx, word_idx in enumerate(word_ids):
                         if word_idx == head_start_word and head_start_token is None:
@@ -353,7 +361,10 @@ def main():
                             tail_start_token = token_idx
                         if word_idx == tail_end_word and tail_end_token is None:
                             tail_end_token = token_idx
-                    assert head_start_token is not None and tail_start_token is not None
+                    if not(head_start_token is not None and tail_start_token is not None):
+                        print(f"File: {dbg_image_path}")
+                        print(f"Head start: {head_start_word}, head end: {head_end_word}, tail start: {tail_start_word}, tail end: {tail_end_word}")
+                        import pdb; pdb.set_trace()
                     if head_end_token is None:
                         head_end_token = len(word_ids) - 1
                     if tail_end_token is None:
@@ -452,7 +463,7 @@ def main():
         tokenizer,
         pad_to_multiple_of=8 if training_args.fp16 else None,
         padding=padding,
-        max_length=1024,
+        max_length=config.max_position_embeddings,
     )
 
     # Metrics

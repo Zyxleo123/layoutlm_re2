@@ -11,3 +11,5 @@
 !/*.ipynb
 !/*.md
 __pycache__
+RO-Datasets
+*.bin
