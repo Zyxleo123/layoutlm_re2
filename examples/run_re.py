@@ -457,7 +457,7 @@ def main():
         tokenizer,
         pad_to_multiple_of=8 if training_args.fp16 else None,
         padding=padding,
-        max_length=1024,
+        max_length=config.max_position_embeddings,
     )
 
     def compute_metrics(p):

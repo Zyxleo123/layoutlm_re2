@@ -23,7 +23,7 @@ python examples/run_ner.py \
   --evaluation_strategy steps \
   --eval_steps 100 \
   --per_device_train_batch_size 1 \
-  --gradient_accumulation_steps 16 \
+  --gradient_accumulation_steps 64 \
   --dataloader_num_workers 8 \
   --logging_steps 1 \
   --logging_dir ./logs-cord/test \

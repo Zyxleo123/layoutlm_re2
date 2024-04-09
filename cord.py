@@ -4,7 +4,7 @@ import tqdm
 
 from datasets import load_dataset 
 
-target_dir = './RO-Datasets/SROIE/images'
+target_dir = './RO-Datasets/CORD/images'
 
 dataset_all = load_dataset("naver-clova-ix/cord-v2")
 
