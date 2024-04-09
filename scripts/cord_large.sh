@@ -12,13 +12,13 @@ python examples/run_ner.py \
   --ro_info \
   --do_train \
   --do_eval \
-  --model_name_or_path ./layoutlmv3-large-ner-1028 \
+  --model_name_or_path ./layoutlmv3-large-ner-1542 \
   --output_dir ./results/layoutlmv3-large-ft-cord-ner \
   --overwrite_output_dir yes \
   --segment_level_layout 1 \
   --visual_embed 1 \
   --input_size 224 \
-  --max_steps 1000 \
+  --max_steps 2 \
   --save_steps -1 \
   --evaluation_strategy steps \
   --eval_steps 100 \
@@ -26,7 +26,7 @@ python examples/run_ner.py \
   --gradient_accumulation_steps 64 \
   --dataloader_num_workers 8 \
   --logging_steps 1 \
-  --logging_dir ./logs-cord/test \
-  --learning_rate 7e-5 \
+  --logging_dir ./logs/test \
+  --learning_rate 5e-5 \
   --lam 15.0 \
-  --ro_layers 3 \
+  --ro_layers 24 \
