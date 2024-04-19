@@ -3,7 +3,7 @@
 # 目前只支持单卡
 
 export CUDA_DEVICE_ORDER=PCI_BUS_ID
-export CUDA_VISIBLE_DEVICES=6
+export CUDA_VISIBLE_DEVICES=5
 export TOKENIZERS_PARALLELISM=false
 export PYTHONPATH="/root/layout:$PYTHONPATH"
 
@@ -12,8 +12,8 @@ python examples/run_ner.py \
   --ro_info \
   --do_train \
   --do_eval \
-  --model_name_or_path ./layoutlmv3-base-1028 \
-  --output_dir ./results/layoutlmv3-base-ft-cord-ner \
+  --model_name_or_path ./layoutlmv3-base-1542 \
+  --output_dir ./results/test \
   --overwrite_output_dir yes \
   --segment_level_layout 1 \
   --visual_embed 1 \
@@ -23,10 +23,11 @@ python examples/run_ner.py \
   --evaluation_strategy steps \
   --eval_steps 100 \
   --per_device_train_batch_size 1 \
+  --per_device_eval_batch_size 1 \
   --gradient_accumulation_steps 16 \
   --dataloader_num_workers 8 \
   --logging_steps 1 \
-  --logging_dir ./logs-cord/test \
-  --learning_rate 7e-5 \
+  --logging_dir ./logs/test \
+  --learning_rate 5e-5 \
   --lam 15.0 \
   --ro_layers 3 \

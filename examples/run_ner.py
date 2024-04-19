@@ -364,7 +364,7 @@ def main():
                     if not(head_start_token is not None and tail_start_token is not None):
                         print(f"File: {dbg_image_path}")
                         print(f"Head start: {head_start_word}, head end: {head_end_word}, tail start: {tail_start_word}, tail end: {tail_end_word}")
-                        import pdb; pdb.set_trace()
+                        raise ValueError()
                     if head_end_token is None:
                         head_end_token = len(word_ids) - 1
                     if tail_end_token is None:

@@ -1,11 +1,10 @@
-/layoutlmv3-base-1028
 /logs*
 /results
 /*.*
+/layoutlmv3-*
 !layoutlmft/**
 /layoutlmft/data/datasets/**
 !.gitignore
-!.vscotrain_custom_ner.shde/launch.json
 !/*.sh
 !/*.py
 !/*.ipynb
@@ -13,3 +12,4 @@
 __pycache__
 RO-Datasets
 *.bin
+*.log
