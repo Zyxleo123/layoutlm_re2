@@ -18,8 +18,6 @@ gradient_accumulation_steps = 16//batch_size
 fixed_args = [
     "--do_train",
     "--do_eval",
-    # "--model_name_or_path", "./layoutlmv3-base-1028",
-    # "--output_dir", "./results/layoutlmv3-base-finetuned-custom-ner",
     "--overwrite_output_dir", "yes",
     "--segment_level_layout", "1",
     "--visual_embed", "1",
@@ -71,7 +69,6 @@ for dataset in datasets:
                 python_command = " ".join([
                     # "nohup",
                     "python", script_dir,
-                    "--dataset_name", dataset,
                     "--model_name_or_path", model_name_or_path,
                     *fixed_args,
                     "--learning_rate", f"{lr}",

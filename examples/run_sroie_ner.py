@@ -468,7 +468,6 @@ def main():
     metric = Seqeval()
 
     def compute_metrics(p):
-        import pdb; pdb.set_trace()
         predictions, labels = p
         predictions = [predictions]
         labels = [labels]
