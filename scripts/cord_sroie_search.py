@@ -48,7 +48,7 @@ datasets = [
     "sroie",
 ]
 for dataset in datasets:
-    script_name = "run_ner.py"
+    script_name = "run_sroie_ner.py"
     script_dir = os.path.join(script_base, script_name)
     training_volume = ["--max_steps", "1000"]
     eval_steps = ["--eval_steps", "100"]
