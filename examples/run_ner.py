@@ -424,6 +424,7 @@ def main():
         train_dataset = train_dataset.map(
             tokenize_and_align_labels,
             batched=True,
+            batch_size=16,
             remove_columns=remove_columns,
             num_proc=data_args.preprocessing_num_workers,
             load_from_cache_file=not data_args.overwrite_cache,
@@ -439,6 +440,7 @@ def main():
         eval_dataset = eval_dataset.map(
             tokenize_and_align_labels,
             batched=True,
+            batch_size=16,
             remove_columns=remove_columns,
             num_proc=data_args.preprocessing_num_workers,
             load_from_cache_file=not data_args.overwrite_cache,
@@ -453,6 +455,7 @@ def main():
         test_dataset = test_dataset.map(
             tokenize_and_align_labels,
             batched=True,
+            batch_size=16,
             remove_columns=remove_columns,
             num_proc=data_args.preprocessing_num_workers,
             load_from_cache_file=not data_args.overwrite_cache,
@@ -473,7 +476,7 @@ def main():
         predictions, labels = p
         predictions = np.argmax(predictions, axis=2)
 
-        # Remove ignored index (special tokens)
+        # Remove ignored index (special tokens or subwords if data_args.label_all_tokens is False)
         true_predictions = [
             [label_list[p] for (p, l) in zip(prediction, label) if l != -100]
             for prediction, label in zip(predictions, labels)

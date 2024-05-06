@@ -2,6 +2,7 @@
 # conda activate layoutlmv3
 # 目前只支持单卡
 
+export PYTORCH_CUDA_ALLOC_CONF="max_split_size_mb:1024"
 export CUDA_DEVICE_ORDER=PCI_BUS_ID
 export CUDA_VISIBLE_DEVICES=7
 export TOKENIZERS_PARALLELISM=false

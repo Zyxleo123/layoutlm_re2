@@ -58,6 +58,15 @@ class DataCollatorForKeyValueExtraction(DataCollatorMixin):
         labels = [feature[label_name] for feature in features] if label_name in features[0].keys() else None
         task = "relation_extraction" if "relations" in features[0].keys() else "token_classification"
         
+        if 'word_ids' in features[0]:
+            assert 'word_lengths' in features[0]
+            # they don't need any collation, return them as is
+            word_ids = [feature.pop('word_ids') for feature in features]
+            word_lengths = [feature.pop('word_lengths') for feature in features]
+        else:
+            word_ids = None
+            word_lengths = None
+
         images = None
         if "images" in features[0]:
             images = torch.stack([torch.tensor(d.pop("images")) for d in features])
@@ -135,5 +144,9 @@ class DataCollatorForKeyValueExtraction(DataCollatorMixin):
         if images is not None and task == "token_classification":
             visual_labels = torch.ones((len(batch['input_ids']), IMAGE_LEN), dtype=torch.long) * -100
             batch["labels"] = torch.cat([batch['labels'], visual_labels], dim=1)
+        
+        if word_ids is not None:
+            batch['word_ids'] = word_ids
+            batch['word_lengths'] = word_lengths
 
         return batch

@@ -1,1 +1,1 @@
-from .trainer import RETrainer, NERTrainer, ROTrainingArguments
+from .trainer import RETrainer, SROIETrainer, ROTrainingArguments

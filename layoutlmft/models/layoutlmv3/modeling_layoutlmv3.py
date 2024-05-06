@@ -44,6 +44,7 @@ from .configuration_layoutlmv3 import LayoutLMv3Config
 from timm.models.layers import to_2tuple
 
 from .re import REDecoder, ReOutput
+from .ner import NEROutput
 
 
 logger = logging.get_logger(__name__)
@@ -519,9 +520,11 @@ class LayoutLMv3Encoder(nn.Module):
             self.ops = [self.fpn1, self.fpn2, self.fpn3, self.fpn4]
 
     def relative_position_bucket(self, relative_position, bidirectional=True, num_buckets=32, max_distance=128):
+        # num_buckets is the number of embedding vectors
         ret = 0
         if bidirectional:
             num_buckets //= 2
+            # add a huge number to position value to mark that it's a positive relative position
             ret += (relative_position > 0).long() * num_buckets
             n = torch.abs(relative_position)
         else:
@@ -1114,6 +1117,9 @@ class LayoutLMv3ForTokenClassification(LayoutLMv3PreTrainedModel):
         return_dict=None,
         images=None,
         image_path=None,
+        # for output decoding
+        word_lengths=None,
+        word_ids=None,
     ):
         r"""
         labels (:obj:`torch.LongTensor` of shape :obj:`(batch_size, sequence_length)`, `optional`):
@@ -1161,11 +1167,13 @@ class LayoutLMv3ForTokenClassification(LayoutLMv3PreTrainedModel):
             output = (logits,) + outputs[2:]
             return ((loss,) + output) if loss is not None else output
 
-        return TokenClassifierOutput(
+        return NEROutput(
             loss=loss,
             logits=logits,
             hidden_states=outputs.hidden_states,
             attentions=outputs.attentions,
+            word_lengths=word_lengths,
+            word_ids=word_ids
         )
 
 

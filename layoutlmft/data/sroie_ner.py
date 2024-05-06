@@ -83,6 +83,8 @@ class Sroie(datasets.GeneratorBasedBuilder):
                 {
                     "id": datasets.Value("string"),
                     "tokens": datasets.Sequence(datasets.Value("string")),
+                    # "word_ids": datasets.Sequence(datasets.Sequence(datasets.Value("int64"))),
+                    "word_lengths": datasets.Sequence(datasets.Value("int64")),
                     "bboxes": datasets.Sequence(datasets.Sequence(datasets.Value("int64"))),
                     "ner_tags": datasets.Sequence(
                         datasets.features.ClassLabel(
@@ -108,8 +110,6 @@ class Sroie(datasets.GeneratorBasedBuilder):
 
     def _split_generators(self, dl_manager):
         """Returns SplitGenerators."""
-        sroie_root = os.path.join('RO-Datasets', 'SROIE')
-        anno_dir = self.config.data_dir
         return [
             datasets.SplitGenerator(
                 name=datasets.Split.TRAIN, gen_kwargs={"split": "train"}
@@ -119,7 +119,7 @@ class Sroie(datasets.GeneratorBasedBuilder):
             ),
         ]
 
-    def split_with_indices(input_str, base_index):
+    def split_with_indices(self, input_str, base_index):
         # Note: must match leading spaces instead of trailing spaces.
         #       Because Date entities in texts like ": 2013/1/1 Open" is always annotated with the leading space, excluding the trailing space.
         pat = re.compile(r"\s*\S+")
@@ -148,16 +148,16 @@ class Sroie(datasets.GeneratorBasedBuilder):
         return bbox
 
     class Token:
-        def __init__(self, text: str, word_ids: list):
+        def __init__(self, text: str, char_ids: list):
             self.text = text
-            self.word_ids = word_ids
+            self.char_ids = char_ids
             self.label = None
 
-    def four_point_to_box(points):
+    def four_point_to_box(self, points):
         assert len(points) == 4
         return points[0] + points[2]
 
-    def correct_bbox(box, size):
+    def correct_bbox(self, box, size):
         if any([box[i] < 0 or box[i] > size[i % 2] for i in range(4)]):
             box = [0 if box[i] < 0 else box[i] for i in range(4)]
             print(box)
@@ -166,33 +166,34 @@ class Sroie(datasets.GeneratorBasedBuilder):
             print(box)
         return box
 
-    def four_point_to_box(self, points):
-        assert len(points) == 4
-        return points[0] + points[2]
-
     def _generate_examples(self, split):
-        anno_full = os.path.join(self.data_root, self.anno_dir)
-        img_full = os.path.join(self.data_root, self.img_dir)
+        anno_full = os.path.join(self.config.data_root, self.config.anno_dir)
+        img_full = os.path.join(self.config.data_root, self.config.img_dir)
 
         anno_files = os.listdir(anno_full)
         for uid, file in enumerate(anno_files): 
+            if split == 'train' and file not in Train_files:
+                continue
+            if split == 'test' and file not in Test_files:
+                continue
             with open(os.path.join(anno_full, file), 'r') as f:
                 data = json.load(f)
                 image_file = data['uid'] + '.jpg'
                 assert image_file == file.replace('.json', '.jpg')
                 image_path = os.path.join(img_full, image_file)
                 annotated_size = data['img']['width'], data['img']['height']
-                image = load_image(image_path)
+                image, size = load_image(image_path) # side effect: resize to 224x224
+                assert annotated_size == size
                 document = data['document']
                 tokens = []
                 bboxes = []
-                word_id2token_id = {}
-                total_word_count = 0
+                char_id2token_id = {}
+                total_char_count = 0
                 # whitespace tokenize and do two-way mapping between word_id(annotated id) and token_id(output list index)
                 for segment in document:
                     seg_text = segment['text']
-                    texts, word_ids = self.split_with_indices(seg_text, total_word_count)
-                    assert len(texts) == len(word_ids)
+                    texts, char_ids = self.split_with_indices(seg_text, total_char_count)
+                    assert len(texts) == len(char_ids)
 
                     box = segment['box']
                     box = self.four_point_to_box(box)
@@ -200,11 +201,11 @@ class Sroie(datasets.GeneratorBasedBuilder):
                     box = normalize_bbox(box, annotated_size)
                     bboxes.extend([box] * len(texts))
 
-                    for i, word_id in enumerate(word_ids):
-                        for id in word_id:
-                            word_id2token_id[id] = len(tokens) + i
-                    total_word_count += len(segment['words'])
-                    tokens.extend([self.Token(text, word_ids) for text, word_ids in zip(texts, word_ids)])
+                    for i, char_id in enumerate(char_ids):
+                        for id in char_id:
+                            char_id2token_id[id] = len(tokens) + i
+                    total_char_count += len(segment['words'])
+                    tokens.extend([self.Token(text, char_ids) for text, char_ids in zip(texts, char_ids)])
 
                 # assign labels to tokens
                 assigned = [False] * len(data['label_entities'])
@@ -221,30 +222,30 @@ class Sroie(datasets.GeneratorBasedBuilder):
                     #     end -= 1
                     # # assert that at most 1 space removed in both ends
                     # assert start <= 1 and len(text) - end <= 1, (token.text, anno_file)
-                    word_ids = set(token.word_ids[start:end])
+                    char_ids = set(token.char_ids[start:end])
 
                     for entity in data['label_entities']:
                         label = entity['label'] + '+' + str(entity['entity_id'])
                         assert len(entity['word_idx']) <= 1
-                        if len(entity['word_idx']) == 0:
+                        if len(entity['word_idx']) == 0: # empty entity(error on the annotation side)
                             assigned[entity['entity_id']] = True
                             continue
-                        entity_word_ids = set(entity['word_idx'][0])
-                        if (word_ids & entity_word_ids) and not word_ids.issubset(entity_word_ids):
-                            print(token.text, file, sorted(list(word_ids)), sorted(list(entity_word_ids)))
+                        entity_char_ids = set(entity['word_idx'][0])
+                        if (char_ids & entity_char_ids) and not char_ids.issubset(entity_char_ids):
+                            raise ValueError(f'Overlapping but not subset entity in {file}: {entity["text"]}, {token.text}')
 
-                        if word_ids.issubset(entity_word_ids):
+                        if char_ids.issubset(entity_char_ids):
                             token.label = label
                             assigned[entity['entity_id']] = True
                             break
                         
                 assert all(assigned), (file, assigned)
-                data_entity_word_ids = []
-                gt_entity_word_ids = sum([entity['word_idx'][0] for entity in data['label_entities'] if len(entity['word_idx']) > 0], [])
+                anno_entity_char_ids = []
+                gt_entity_char_ids = sum([entity['word_idx'][0] for entity in data['label_entities'] if len(entity['word_idx']) > 0], [])
                 for token in tokens:
                     if token.label is not None:
-                        data_entity_word_ids.extend(token.word_ids)
-                assert set(data_entity_word_ids) == set(gt_entity_word_ids), (file, data_entity_word_ids, gt_entity_word_ids)
+                        anno_entity_char_ids.extend(token.char_ids)
+                assert set(anno_entity_char_ids) == set(gt_entity_char_ids), (file, anno_entity_char_ids, gt_entity_char_ids)
 
 
                 # add B- and I- prefix to labels; iterate reversely to avoid changing labels of previous tokens
@@ -254,23 +255,23 @@ class Sroie(datasets.GeneratorBasedBuilder):
                     elif i == 0 or tokens[i-1].label != tokens[i].label:
                         # remove '+{id}' suffix
                         label = tokens[i].label.split('+')[0]
-                        tokens[i].label = 'B-' + label
+                        tokens[i].label = 'B-' + label.upper()
                     else:
                         label = tokens[i].label.split('+')[0]
-                        tokens[i].label = 'I-' + label
+                        tokens[i].label = 'I-' + label.upper()
 
                 ro_spans = []
-                if self.ro_info:
+                if self.config.ro_info:
                     for linking in data["ro_linkings"]:
                         cur_span = {}
                         head_seg, tail_seg = document[linking[0]], document[linking[1]]
-                        cur_span['head_start'] = word_id2token_id[head_seg['words'][0]['id']]
-                        cur_span['head_end'] = word_id2token_id[head_seg['words'][-1]['id']] + 1
-                        cur_span['tail_start'] = word_id2token_id[tail_seg['words'][0]['id']]
-                        cur_span['tail_end'] = word_id2token_id[tail_seg['words'][-1]['id']] + 1
+                        cur_span['head_start'] = char_id2token_id[head_seg['words'][0]['id']]
+                        cur_span['head_end'] = char_id2token_id[head_seg['words'][-1]['id']] + 1
+                        cur_span['tail_start'] = char_id2token_id[tail_seg['words'][0]['id']]
+                        cur_span['tail_end'] = char_id2token_id[tail_seg['words'][-1]['id']] + 1
                         ro_spans.append(cur_span)
 
                 # add to output
-                yield uid, {'id': uid, 'tokens': [token.text for token in tokens], 'word_ids': [token.word_ids for token in tokens], 
+                yield uid, {'id': uid, 'tokens': [token.text for token in tokens], 'word_lengths': [len(token.char_ids) for token in tokens], 
                         'ner_tags': [token.label for token in tokens], 'bboxes': bboxes, 'image_path': image_path, 'image': image,
                         'ro_spans': ro_spans}
