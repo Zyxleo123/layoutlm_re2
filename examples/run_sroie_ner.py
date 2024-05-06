@@ -468,20 +468,12 @@ def main():
     metric = Seqeval()
 
     def compute_metrics(p):
+        import pdb; pdb.set_trace()
         predictions, labels = p
-        predictions = np.argmax(predictions, axis=2)
+        predictions = [predictions]
+        labels = [labels]
 
-        # Remove ignored index (special tokens or subwords if data_args.label_all_tokens is False)
-        true_predictions = [
-            [label_list[p] for (p, l) in zip(prediction, label) if l != -100]
-            for prediction, label in zip(predictions, labels)
-        ]
-        true_labels = [
-            [label_list[l] for (p, l) in zip(prediction, label) if l != -100]
-            for prediction, label in zip(predictions, labels)
-        ]
-
-        results = metric.compute(predictions=true_predictions, references=true_labels)
+        results = metric.compute(predictions=predictions, references=labels)
         if data_args.return_entity_level_metrics:
             # Unpack nested dictionaries
             final_results = {}

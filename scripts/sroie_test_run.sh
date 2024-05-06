@@ -11,7 +11,7 @@ export PYTHONPATH="/root/layout:$PYTHONPATH"
 
 python examples/run_sroie_ner.py \
   --ro_info \
-  --do_train \
+  --do_eval \
   --model_name_or_path ./layoutlmv3-base-1028 \
   --output_dir ./results/layoutlmv3-base-ft-sroie-ner \
   --overwrite_output_dir yes \
