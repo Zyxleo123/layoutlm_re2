@@ -119,3 +119,22 @@ Hyperparameters:
 | ner_ori | 1.0 | 7 | 0.1 |
 | kre_ie | 10 | 12 | 0 |
 | re_ori | 5 | 12 | 0.01 |
+
+# 5 SROIE & CORD NER results(RO & without RO)
+
+All trained on 1000 Steps, total batch size is 16(including gradient accumulation) for sroie, and 64 for cord.
+
+| Use RO\Dataset-Model scale | SROIE-base | SROIE-large | CORD-base | CORD-large |
+| :---: | :---: | :---: |
+| True | 0.9565 | 0.9659 | 0.9672 | 0.9729 |
+| False | 0.948 | 0.9612 | 0.9591 | 0.9698 |
+
+Hyperparameters:
+
+| Dataset-Model scale | initial lam | ro layers(not searched) | lam lr | lr(searched preliminarily, not with ro params) |
+| :---: | :---: | :---: | :---: | :---: |
+| SROIE-base | 1.0 | 12 | 0.01 | 7e-5 |
+| SROIE-large | 10.0 | 24 | 0.1 | 3e-5 |
+| CORD-base | 0.1 | 12 | 0.5 | 1e-4 |
+| CORD-large | 0.01 | 24 | 0.05 | 5e-5 |
+
