@@ -23,12 +23,12 @@ python examples/run_sroie_ner.py \
   --save_steps -1 \
   --evaluation_strategy steps \
   --eval_steps 100 \
-  --per_device_train_batch_size 1 \
+  --per_device_train_batch_size 4 \
   --per_device_eval_batch_size 1 \
   --gradient_accumulation_steps 16 \
   --dataloader_num_workers 8 \
   --logging_steps 1 \
   --logging_dir ./logs-sroie/test \
-  --learning_rate 7e-5 \
+  --learning_rate 3e-5 \
   --lam 15.0 \
   --ro_layers 3 \

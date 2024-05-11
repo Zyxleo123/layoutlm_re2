@@ -6,15 +6,14 @@ script_base = "examples/"
 logging_base = "logs"
 
 ro_info = [True]
-lam_lrs = [0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0]
+lam_lrs = [0.01, 0.05, 0.1, 0.5, 1.0]
 lams = [0.01, 0.1, 1.0, 10.0]
-ro_layers = [1, 4, 6, 10, 12]
 params = []
-params.append((False, 0, 0, 0))
-params.extend(list(itertools.product(ro_info, lam_lrs, lams, ro_layers)))
+params.append((False, 0, 0))
+params.extend(list(itertools.product(ro_info, lam_lrs, lams)))
 
 # 其他固定的超参数
-batch_size = 2
+batch_size = 1
 fixed_args = [
     "--do_train",
     "--do_eval",
@@ -30,7 +29,7 @@ fixed_args = [
     "--logging_steps", "1",
 ]
 # 指定 GPU 索引列表
-gpu_processes = {4:None, 5:None, 6:None, 7:None}
+gpu_processes = {5:None}
 # gpu_processes = {4:None}
 available_gpus = gpu_processes.keys()
 
@@ -49,15 +48,16 @@ for dataset in datasets:
     gradient_accumulation_steps = 16 // batch_size if dataset == "cord" else 16 // batch_size
     gradient_accumulation_steps = ["--gradient_accumulation_steps", str(gradient_accumulation_steps)]
 
-    for size in ['base']:
-        length = 1028
+    for size in ['large']:
+        length = 514
         model_name_or_path = f"./layoutlmv3-{size}-{length}"
+        ro_layer = 12 if size == 'base' else 24
         for param in params:
-            ro_info, lam_lr, lam, ro_layer = param
+            ro_info, lam_lr, lam = param
             lr = lrs[dataset][size]
             if lam_lr is None:
                 lam_lr = lr
-            file_name = f"{size}-{lr}-{lam}-{lam_lr}-{ro_layer}" if ro_info else f"{size}-{lr}"
+            file_name = f"{size}-{lr}-{lam}-{lam_lr}" if ro_info else f"{size}-{lr}"
             logging_dir = os.path.join(logging_base, dataset, file_name)
             output_dir = os.path.join("./results", dataset, file_name)
             # 构建完整的命令
@@ -95,6 +95,8 @@ for dataset in datasets:
             command = [
                 "export CUDA_DEVICE_ORDER=PCI_BUS_ID",
                 f"export CUDA_VISIBLE_DEVICES={gpu_index}",
+                "export http_proxy=127.0.0.1:7890",
+                "export https_proxy=127.0.0.1:7890",
                 "export TOKENIZERS_PARALLELISM=false",
                 "export PYTHONPATH=\"/root/layout:$PYTHONPATH\"",
                 python_command,

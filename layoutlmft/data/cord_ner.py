@@ -208,7 +208,8 @@ class Cord(datasets.GeneratorBasedBuilder):
                     continue
                 # by default: --segment_level_layout 1
                 # if do not want to use segment_level_layout, comment the following line
-                    cur_line_bboxes = self.get_line_bbox(cur_line_bboxes)
+
+                cur_line_bboxes = self.get_line_bbox(cur_line_bboxes)
                         
                 bboxes.extend(cur_line_bboxes)
             
